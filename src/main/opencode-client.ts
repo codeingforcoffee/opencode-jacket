@@ -1,22 +1,16 @@
 /**
- * OpenCode SDK 封装 - 优先使用打包的 opencode-ai
+ * OpenCode SDK 封装 - 连接本地已运行的 OpenCode 服务
  */
-import { createOpencode, createOpencodeClient } from '@opencode-ai/sdk/v2';
-import { createBundledOpencodeServer } from './opencode-server-bundled';
-import { hasBundledOpencode } from './opencode-bundled';
+import { createOpencodeClient } from '@opencode-ai/sdk/v2';
 
-export type OpenCodeClient = Awaited<ReturnType<typeof createOpencode>>['client'];
-type OpenCodeServer = { url: string; close: () => void };
+export type OpenCodeClient = Awaited<ReturnType<typeof createOpencodeClient>>;
 
 export interface OpenCodeConnectionOptions {
   hostname?: string;
   port?: number;
-  timeout?: number;
-  config?: { model?: string };
 }
 
 let client: OpenCodeClient | null = null;
-let server: OpenCodeServer | null = null;
 let eventAbortController: AbortController | null = null;
 
 export type EventCallback = (event: unknown) => void;
@@ -24,8 +18,7 @@ export type EventCallback = (event: unknown) => void;
 const eventCallbacks: Set<EventCallback> = new Set();
 
 /**
- * 初始化 OpenCode 连接
- * 优先使用打包的 opencode-ai，不可用时回退到 PATH 中的 opencode
+ * 连接本地已运行的 OpenCode 服务
  */
 export async function connectOpenCode(
   options: OpenCodeConnectionOptions = {}
@@ -34,30 +27,13 @@ export async function connectOpenCode(
     return client;
   }
 
-  const { hostname = '127.0.0.1', port = 4096, timeout = 5000, config } = options;
+  const hostname = options.hostname ?? '127.0.0.1';
+  const port = options.port ?? 4096;
+  const baseUrl = `http://${hostname}:${port}`;
 
-  if (hasBundledOpencode()) {
-    try {
-      const serverResult = await createBundledOpencodeServer({
-        hostname,
-        port,
-        timeout,
-        config
-      });
-      server = serverResult;
-      client = createOpencodeClient({ baseUrl: serverResult.url });
-    } catch (err) {
-      console.warn('[opencode-client] 打包版本启动失败，尝试 PATH:', (err as Error).message);
-    }
-  }
+  client = createOpencodeClient({ baseUrl });
 
-  if (!client) {
-    const opencode = await createOpencode({ hostname, port, timeout, config });
-    client = opencode.client;
-    server = opencode.server;
-  }
-
-  // 订阅 SSE 事件流，转发给渲染进程（与 OpenWork 一致）
+  // 订阅 SSE 事件流，转发给渲染进程
   try {
     const events = await client.event.subscribe();
     eventAbortController = new AbortController();
@@ -87,10 +63,6 @@ export function disconnectOpenCode(): void {
     eventAbortController = null;
   }
   eventCallbacks.clear();
-  if (server) {
-    server.close();
-    server = null;
-  }
   client = null;
 }
 

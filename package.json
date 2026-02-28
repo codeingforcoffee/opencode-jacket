@@ -28,7 +28,6 @@
     "@element-plus/icons-vue": "^2.3.1",
     "@opencode-ai/sdk": "^1.2.0",
     "element-plus": "^2.9.1",
-    "opencode-ai": "^1.2.15",
     "pinia": "^2.2.6",
     "vue": "^3.5.25",
     "vue-i18n": "^11.0.0",
@@ -58,8 +57,7 @@
       "electron",
       "electron-winstaller",
       "esbuild",
-      "vue-demi",
-      "opencode-ai"
+      "vue-demi"
     ]
   }
 }

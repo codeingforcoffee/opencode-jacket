@@ -51,39 +51,7 @@
         <span class="mr-2">⚙</span>
         {{ $t('nav.settings') }}
       </el-button>
-      <el-button text class="w-full justify-start" disabled>
-        <span class="mr-2">🔌</span>
-        MCP
-      </el-button>
-      <el-button text class="w-full justify-start" disabled>
-        <span class="mr-2">📤</span>
-        Exports
-      </el-button>
-      <el-button text class="w-full justify-start" @click="showAbout = true">
-        <span class="mr-2">ℹ</span>
-        {{ $t('nav.about') }}
-      </el-button>
     </div>
-
-    <!-- 关于对话框 -->
-    <el-dialog v-model="showAbout" :title="$t('about.title')" width="400px">
-      <p class="text-gray-600 dark:text-gray-400">{{ $t('about.desc') }}</p>
-      <div class="mt-4 space-y-2 text-sm text-gray-500">
-        <p>
-          <a
-            href="https://opencode.ai/docs/zh-cn/sdk/"
-            target="_blank"
-            class="text-primary-600 hover:underline"
-          >
-            OpenCode SDK 文档
-          </a>
-        </p>
-        <p>
-          首次使用需配置 LLM provider：
-          <code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">opencode auth login</code>
-        </p>
-      </div>
-    </el-dialog>
 
     <!-- 设置抽屉 -->
     <el-drawer
@@ -109,7 +77,6 @@ const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
 const themeStore = useThemeStore();
 const showSettings = ref(false);
-const showAbout = ref(false);
 
 async function handleNewSession() {
   await sessionStore.createSession();

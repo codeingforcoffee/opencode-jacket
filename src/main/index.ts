@@ -183,58 +183,6 @@ function registerOpenCodeIPC(): void {
       }
     }
   );
-
-  // Shell 执行 - v2 扁平化
-  ipcMain.handle(
-    IPC.OPENCODE_SHELL,
-    async (
-      _,
-      params: { sessionId: string; body: { command?: string; [key: string]: unknown } }
-    ) => {
-      const c = getOpenCodeClient();
-      if (!c) return { error: 'Not connected' };
-      try {
-        const res = await c.session.shell({
-          sessionID: params.sessionId,
-          command: params.body?.command,
-        });
-        return { data: res.data };
-      } catch (err) {
-        return { error: (err as Error).message };
-      }
-    }
-  );
-
-  // 命令执行 - v2 扁平化
-  ipcMain.handle(
-    IPC.OPENCODE_COMMAND,
-    async (_, params: { sessionId: string; body: Record<string, unknown> }) => {
-      const c = getOpenCodeClient();
-      if (!c) return { error: 'Not connected' };
-      try {
-        const res = await c.session.command({
-          sessionID: params.sessionId,
-          command: params.body?.command as string | undefined,
-          arguments: params.body?.arguments as string | undefined,
-        });
-        return { data: res.data };
-      } catch (err) {
-        return { error: (err as Error).message };
-      }
-    }
-  );
-
-  // 中止会话
-  ipcMain.handle(IPC.OPENCODE_ABORT, async (_, sessionId: string) => {
-    const c = getOpenCodeClient();
-    if (!c) return { error: 'Not connected' };
-    try {
-      await c.session.abort({ sessionID: sessionId });
-      return { success: true };
-    } catch (err) {
-      return { error: (err as Error).message };
-    }
-  });
 }
 
 app.whenReady().then(() => {

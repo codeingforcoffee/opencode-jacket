@@ -16,11 +16,6 @@ const opencodeAPI = {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => ipcRenderer.invoke(IPC.OPENCODE_PROMPT, params),
-  shell: (params: { sessionId: string; body: Record<string, unknown> }) =>
-    ipcRenderer.invoke(IPC.OPENCODE_SHELL, params),
-  command: (params: { sessionId: string; body: Record<string, unknown> }) =>
-    ipcRenderer.invoke(IPC.OPENCODE_COMMAND, params),
-  abort: (sessionId: string) => ipcRenderer.invoke(IPC.OPENCODE_ABORT, sessionId),
   onEvent: (callback: (event: unknown) => void) => {
     const fn = (_: unknown, event: unknown) => callback(event);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_EVENT, fn);

@@ -1,5 +1,6 @@
 appId: com.opencode.jacket
 productName: OpenCode Jacket
+asar: true
 directories:
   output: release
   buildResources: build

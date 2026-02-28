@@ -4,17 +4,17 @@
 
 ## 一、项目概述
 
-OpenCode Jacket 是 OpenCode 的桌面套壳应用，通过 `@opencode-ai/sdk` 将 Chat、Shell、Command 等请求代理给 OpenCode 服务。应用启动时优先使用打包的 `opencode-ai`，不可用时回退到全局安装或自动安装。
+OpenCode Jacket 是 OpenCode 的桌面套壳应用，通过 `@opencode-ai/sdk` 的 `createOpencodeClient` 连接本地已运行的 OpenCode 服务，将 Chat、Shell、Command 等请求代理给该服务。
 
 ### 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 构建 | electron-vite、pnpm workspace |
-| 主进程 | Electron、Node.js、@opencode-ai/sdk |
+| 层级     | 技术                                 |
+| -------- | ------------------------------------ |
+| 构建     | electron-vite、pnpm workspace        |
+| 主进程   | Electron、Node.js、@opencode-ai/sdk  |
 | 渲染进程 | Vue 3、TypeScript、Pinia、Vue Router |
-| UI | Element Plus、Tailwind CSS v4 |
-| 国际化 | vue-i18n |
+| UI       | Element Plus、Tailwind CSS v4        |
+| 国际化   | vue-i18n                             |
 
 ---
 
@@ -39,9 +39,7 @@ opencode-jacket/
 │   ├── main/                   # 主进程
 │   │   ├── index.ts            # 入口、窗口、IPC 注册
 │   │   ├── opencode-client.ts  # SDK 封装、连接管理、事件订阅
-│   │   ├── opencode-init.ts    # 环境检查与自动安装
-│   │   ├── opencode-bundled.ts # 打包版 opencode 路径
-│   │   └── opencode-server-bundled.ts  # 打包版服务启动
+│   │   └── opencode-init.ts    # 初始化占位
 │   │
 │   ├── preload/                # 预加载脚本
 │   │   └── index.ts            # contextBridge 暴露 opencode API
@@ -79,11 +77,11 @@ opencode-jacket/
 
 ### 3.1 进程职责
 
-| 进程 | 职责 |
-|------|------|
-| **Main** | 窗口管理、OpenCode 连接、IPC handle、事件流转发 |
-| **Preload** | 安全桥接，通过 `contextBridge` 暴露 `window.opencode` |
-| **Renderer** | Vue 应用，通过 `window.opencode` 调用主进程能力 |
+| 进程         | 职责                                                  |
+| ------------ | ----------------------------------------------------- |
+| **Main**     | 窗口管理、OpenCode 连接、IPC handle、事件流转发       |
+| **Preload**  | 安全桥接，通过 `contextBridge` 暴露 `window.opencode` |
+| **Renderer** | Vue 应用，通过 `window.opencode` 调用主进程能力       |
 
 ### 3.2 数据流
 
@@ -107,13 +105,13 @@ Main (ipcMain.handle)
 
 主进程订阅 `client.event.subscribe()`，将事件转发给渲染进程：
 
-| 事件通道 | 用途 |
-|----------|------|
-| `OPENCODE_EVENT` | 原始事件 |
-| `OPENCODE_CHUNK` | 流式文本（`message.part.delta` 的 `delta`、`properties.text`） |
-| `OPENCODE_CONNECTION_STATUS` | 连接状态 |
-| `INIT_PROGRESS` | 初始化进度 |
-| `INIT_DONE` | 初始化完成 |
+| 事件通道                     | 用途                                                           |
+| ---------------------------- | -------------------------------------------------------------- |
+| `OPENCODE_EVENT`             | 原始事件                                                       |
+| `OPENCODE_CHUNK`             | 流式文本（`message.part.delta` 的 `delta`、`properties.text`） |
+| `OPENCODE_CONNECTION_STATUS` | 连接状态                                                       |
+| `INIT_PROGRESS`              | 初始化进度                                                     |
+| `INIT_DONE`                  | 初始化完成                                                     |
 
 ### 3.4 IPC 命名规范
 
@@ -138,17 +136,17 @@ pnpm dev
 
 ### 4.3 常用脚本
 
-| 命令 | 说明 |
-|------|------|
-| `pnpm dev` | 开发模式（热重载） |
-| `pnpm start` | 预览构建产物 |
-| `pnpm build` | 构建（含 typecheck） |
-| `pnpm build:win` | 打包 Windows |
-| `pnpm build:mac` | 打包 macOS |
-| `pnpm build:linux` | 打包 Linux |
-| `pnpm typecheck` | 类型检查 |
-| `pnpm lint` | ESLint |
-| `pnpm format` | Prettier 格式化 |
+| 命令               | 说明                 |
+| ------------------ | -------------------- |
+| `pnpm dev`         | 开发模式（热重载）   |
+| `pnpm start`       | 预览构建产物         |
+| `pnpm build`       | 构建（含 typecheck） |
+| `pnpm build:win`   | 打包 Windows         |
+| `pnpm build:mac`   | 打包 macOS           |
+| `pnpm build:linux` | 打包 Linux           |
+| `pnpm typecheck`   | 类型检查             |
+| `pnpm lint`        | ESLint               |
+| `pnpm format`      | Prettier 格式化      |
 
 ### 4.4 路径别名
 

@@ -9,25 +9,16 @@
 
 export { SESSION } from './session';
 export { CHAT } from './chat';
-export { SHELL } from './shell';
-export { COMMAND } from './command';
 export { CONNECTION } from './connection';
-export { CONTROL } from './control';
 export { IPC_EVENTS } from './events';
 
 import { CONNECTION } from './connection';
 import { SESSION } from './session';
 import { CHAT } from './chat';
-import { SHELL } from './shell';
-import { COMMAND } from './command';
-import { CONTROL } from './control';
 
 /** 主进程 handle（invoke 调用）- 扁平化导出，兼容现有用法 */
 export const IPC = {
   ...CONNECTION,
   ...SESSION,
   ...CHAT,
-  ...SHELL,
-  ...COMMAND,
-  ...CONTROL,
 } as const;

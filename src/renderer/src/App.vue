@@ -24,11 +24,6 @@
       <main class="flex-1 min-w-0 flex flex-col bg-gray-50 dark:bg-gray-950">
         <ChatPanel />
       </main>
-
-      <!-- 右侧：终端预览 -->
-      <div class="w-80 shrink-0">
-        <TerminalPanel />
-      </div>
     </div>
   </el-config-provider>
 </template>
@@ -42,7 +37,6 @@ import { useConnectionStore } from '@renderer/stores/connection';
 import { useThemeStore } from '@renderer/stores/theme';
 import Sidebar from '@renderer/components/Sidebar.vue';
 import ChatPanel from '@renderer/components/ChatPanel.vue';
-import TerminalPanel from '@renderer/components/TerminalPanel.vue';
 
 const { locale } = useI18n();
 const connectionStore = useConnectionStore();

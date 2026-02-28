@@ -18,15 +18,6 @@ interface OpenCodeAPI {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => Promise<{ data?: unknown; error?: string }>;
-  shell: (params: {
-    sessionId: string;
-    body: Record<string, unknown>;
-  }) => Promise<{ data?: unknown; error?: string }>;
-  command: (params: {
-    sessionId: string;
-    body: Record<string, unknown>;
-  }) => Promise<{ data?: unknown; error?: string }>;
-  abort: (sessionId: string) => Promise<{ success?: boolean; error?: string }>;
   onEvent: (callback: (event: unknown) => void) => () => void;
   onChunk: (callback: (text: string) => void) => () => void;
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => () => void;

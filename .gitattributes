@@ -1,0 +1,5 @@
+# 统一使用 LF 换行符，便于跨平台协作
+* text=auto eol=lf
+
+# Windows 脚本保持 CRLF
+*.{bat,cmd,[cC][mM][dD]} text eol=crlf
