@@ -12,7 +12,21 @@ interface OpenCodeAPI {
   sessionCreate: (body?: { title?: string }) => Promise<{ data?: unknown; error?: string }>;
   sessionList: () => Promise<{ data?: unknown; error?: string }>;
   sessionGet: (id: string) => Promise<{ data?: unknown; error?: string }>;
+  sessionUpdate: (params: { sessionId: string; title?: string }) => Promise<{
+    data?: unknown;
+    error?: string;
+  }>;
   sessionDelete: (id: string) => Promise<{ success?: boolean; error?: string }>;
+  sessionMessages: (sessionId: string) => Promise<{
+    data?: Array<{ info: { role?: string }; parts: Array<{ type?: string; text?: string }> }>;
+    error?: string;
+  }>;
+  mcpList: () => Promise<{ data?: unknown; error?: string }>;
+  mcpAdd: (name: string, config: Record<string, unknown>) => Promise<{
+    data?: unknown;
+    error?: string;
+  }>;
+  mcpRemove: (name: string) => Promise<{ success?: boolean; error?: string }>;
   prompt: (params: {
     sessionId: string;
     parts: Array<{ type: string; text?: string }>;

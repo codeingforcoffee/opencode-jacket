@@ -10,15 +10,18 @@
 export { SESSION } from './session';
 export { CHAT } from './chat';
 export { CONNECTION } from './connection';
+export { MCP } from './mcp';
 export { IPC_EVENTS } from './events';
 
 import { CONNECTION } from './connection';
 import { SESSION } from './session';
 import { CHAT } from './chat';
+import { MCP } from './mcp';
 
 /** 主进程 handle（invoke 调用）- 扁平化导出，兼容现有用法 */
 export const IPC = {
   ...CONNECTION,
   ...SESSION,
   ...CHAT,
+  ...MCP,
 } as const;

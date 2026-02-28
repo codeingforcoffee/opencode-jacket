@@ -1,0 +1,19 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "mcp": {
+        "web-search-prime": {
+            "type": "remote",
+            "url": "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp",
+            "headers": {
+                "Authorization": "Bearer 64ba9567374b4389a964c81811f22968.WIGzCSTuBVpo71hD"
+            }
+        },
+        "web-reader": {
+            "type": "http",
+            "url": "https://open.bigmodel.cn/api/mcp/web_reader/mcp",
+            "headers": {
+                "Authorization": "Bearer 64ba9567374b4389a964c81811f22968.WIGzCSTuBVpo71hD"
+            }
+        }
+    }
+}

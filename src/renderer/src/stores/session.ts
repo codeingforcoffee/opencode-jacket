@@ -37,11 +37,25 @@ export const useSessionStore = defineStore('session', () => {
     currentSessionId.value = id;
   }
 
+  function updateSessionTitle(id: string, title: string) {
+    const idx = sessions.value.findIndex((s) => s.id === id);
+    if (idx >= 0) sessions.value[idx] = { ...sessions.value[idx], title };
+  }
+
+  function removeSession(id: string) {
+    sessions.value = sessions.value.filter((s) => s.id !== id);
+    if (currentSessionId.value === id) {
+      currentSessionId.value = sessions.value[0]?.id ?? '';
+    }
+  }
+
   return {
     sessions,
     currentSessionId,
     loadSessions,
     createSession,
     setCurrentSession,
+    updateSessionTitle,
+    removeSession,
   };
 });

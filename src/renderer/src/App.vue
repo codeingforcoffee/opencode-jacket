@@ -20,9 +20,11 @@
       <!-- 左侧：导航 + 会话列表 + 功能区 -->
       <Sidebar />
 
-      <!-- 中间：对话框 -->
+      <!-- 中间：主内容 -->
       <main class="flex-1 min-w-0 flex flex-col bg-gray-50 dark:bg-gray-950">
-        <ChatPanel />
+        <router-view v-slot="{ Component }">
+          <component :is="Component" />
+        </router-view>
       </main>
     </div>
   </el-config-provider>
@@ -34,12 +36,13 @@ import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
 import en from 'element-plus/dist/locale/en.mjs';
 import { useI18n } from 'vue-i18n';
 import { useConnectionStore } from '@renderer/stores/connection';
+import { useSessionStore } from '@renderer/stores/session';
 import { useThemeStore } from '@renderer/stores/theme';
 import Sidebar from '@renderer/components/Sidebar.vue';
-import ChatPanel from '@renderer/components/ChatPanel.vue';
 
 const { locale } = useI18n();
 const connectionStore = useConnectionStore();
+const sessionStore = useSessionStore();
 const themeStore = useThemeStore();
 
 const initDone = ref(false);
@@ -78,6 +81,8 @@ onMounted(() => {
       if (status.connected) {
         const health = await connectionStore.checkHealth();
         if (health.version) connectionStore.setVersion(health.version);
+        // 连接建立后使用 session.list() 恢复会话列表
+        sessionStore.loadSessions();
       } else {
         connectionStore.setVersion(undefined);
       }
@@ -86,6 +91,7 @@ onMounted(() => {
       if (h.healthy) {
         connectionStore.setConnected(true);
         if (h.version) connectionStore.setVersion(h.version);
+        sessionStore.loadSessions();
       }
     });
   }

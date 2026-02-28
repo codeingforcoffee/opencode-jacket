@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { IPC, IPC_EVENTS } from '@shared';
+import { addMcp, listMcp, removeMcp } from './mcp';
 import {
   connectOpenCode,
   disconnectOpenCode,
@@ -142,6 +143,22 @@ function registerOpenCodeIPC(): void {
     }
   });
 
+  // 更新会话（标题等）
+  ipcMain.handle(
+    IPC.OPENCODE_SESSION_UPDATE,
+    async (_, params: { sessionId: string; title?: string }) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      const { sessionId, title } = params;
+      try {
+        const res = await c.session.update({ sessionID: sessionId, title });
+        return { data: res.data };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
   // 删除会话
   ipcMain.handle(IPC.OPENCODE_SESSION_DELETE, async (_, id: string) => {
     const c = getOpenCodeClient();
@@ -149,6 +166,18 @@ function registerOpenCodeIPC(): void {
     try {
       await c.session.delete({ sessionID: id });
       return { success: true };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 列出会话消息
+  ipcMain.handle(IPC.OPENCODE_SESSION_MESSAGES, async (_, sessionId: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.session.messages({ sessionID: sessionId });
+      return { data: res.data };
     } catch (err) {
       return { error: (err as Error).message };
     }
@@ -183,6 +212,39 @@ function registerOpenCodeIPC(): void {
       }
     }
   );
+
+  // MCP 列表
+  ipcMain.handle(IPC.MCP_LIST, async () => {
+    try {
+      const items = await listMcp();
+      return { data: items };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // MCP 添加
+  ipcMain.handle(
+    IPC.MCP_ADD,
+    async (_, name: string, config: Record<string, unknown>) => {
+      try {
+        const result = await addMcp(name, config);
+        return { data: result };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // MCP 删除
+  ipcMain.handle(IPC.MCP_REMOVE, async (_, name: string) => {
+    try {
+      const ok = await removeMcp(name);
+      return { success: ok };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
 }
 
 app.whenReady().then(() => {

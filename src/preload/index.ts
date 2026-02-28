@@ -10,7 +10,15 @@ const opencodeAPI = {
     ipcRenderer.invoke(IPC.OPENCODE_SESSION_CREATE, body),
   sessionList: () => ipcRenderer.invoke(IPC.OPENCODE_SESSION_LIST),
   sessionGet: (id: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_GET, id),
+  sessionUpdate: (params: { sessionId: string; title?: string }) =>
+    ipcRenderer.invoke(IPC.OPENCODE_SESSION_UPDATE, params),
   sessionDelete: (id: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_DELETE, id),
+  sessionMessages: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.OPENCODE_SESSION_MESSAGES, sessionId),
+  mcpList: () => ipcRenderer.invoke(IPC.MCP_LIST),
+  mcpAdd: (name: string, config: Record<string, unknown>) =>
+    ipcRenderer.invoke(IPC.MCP_ADD, name, config),
+  mcpRemove: (name: string) => ipcRenderer.invoke(IPC.MCP_REMOVE, name),
   prompt: (params: {
     sessionId: string;
     parts: Array<{ type: string; text?: string }>;

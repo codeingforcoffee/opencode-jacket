@@ -15,7 +15,7 @@
           :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
         >
           <div
-            class="max-w-[80%] rounded-lg px-4 py-2"
+            class="max-w-[80%] rounded-lg px-4 py-2 group/msg relative"
             :class="
               msg.role === 'user'
                 ? 'bg-primary-500 text-white'
@@ -23,14 +23,34 @@
             "
           >
             <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+            <el-button
+              v-if="msg.role === 'assistant' && msg.content"
+              type="primary"
+              text
+              size="small"
+              class="absolute top-1 right-1 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+              @click="copyToClipboard(msg.content)"
+            >
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
           </div>
         </div>
         <div v-if="streamingText" class="flex justify-start">
           <div
-            class="max-w-[80%] rounded-lg px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            class="max-w-[80%] rounded-lg px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group/msg relative"
           >
             <span class="whitespace-pre-wrap">{{ streamingText }}</span>
             <span class="animate-pulse">▌</span>
+            <el-button
+              v-if="streamingText"
+              type="primary"
+              text
+              size="small"
+              class="absolute top-1 right-1 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+              @click="copyToClipboard(streamingText)"
+            >
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
           </div>
         </div>
       </div>
@@ -61,9 +81,13 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { DocumentCopy } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
+import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 
+const { t } = useI18n();
 const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
 const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -73,12 +97,52 @@ const sending = ref(false);
 
 let unsubChunk: (() => void) | null = null;
 
+async function loadMessages(sessionId: string) {
+  if (!sessionId || typeof window.opencode === 'undefined') {
+    messages.value = [];
+    return;
+  }
+  const res = await window.opencode.sessionMessages(sessionId);
+  if (res.error) {
+    messages.value = [];
+    return;
+  }
+  const raw = res.data;
+  if (!Array.isArray(raw)) {
+    messages.value = [];
+    return;
+  }
+  messages.value = raw.map((item) => {
+    const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
+    const content =
+      item.parts
+        ?.filter((p): p is { type: string; text?: string } => p?.type === 'text')
+        .map((p) => p.text ?? '')
+        .join('') ?? '';
+    return { role, content };
+  });
+}
+
 watch(
   () => sessionStore.currentSessionId,
-  () => {
-    messages.value = [];
-  }
+  (sessionId) => {
+    if (sessionId) {
+      loadMessages(sessionId);
+    } else {
+      messages.value = [];
+    }
+  },
+  { immediate: true }
 );
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success(t('chat.copied'));
+  } catch {
+    ElMessage.error('复制失败');
+  }
+}
 
 async function sendMessage() {
   const sessionId = sessionStore.currentSessionId;
