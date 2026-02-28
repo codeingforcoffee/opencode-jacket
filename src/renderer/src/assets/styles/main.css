@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary-50: #ecf5ff;
+  --color-primary-100: #d9ecff;
+  --color-primary-500: #409eff;
+  --color-primary-700: #337ecc;
+  --color-primary-900: #1d3a5c;
+}
+
+:root {
+  --el-color-primary: #409eff;
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: inherit;
+}

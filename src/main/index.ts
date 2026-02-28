@@ -1,0 +1,280 @@
+import { app, shell, BrowserWindow, ipcMain } from 'electron';
+import { join } from 'path';
+import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { IPC, IPC_EVENTS } from '@shared';
+import {
+  connectOpenCode,
+  disconnectOpenCode,
+  getOpenCodeClient,
+  healthCheck,
+  subscribeEvents,
+} from './opencode-client';
+import { ensureOpencodeReady } from './opencode-init';
+
+let mainWindow: BrowserWindow | null = null;
+
+let initStatus: { done: boolean; percent?: number; message?: string } = {
+  done: false,
+  percent: 0,
+  message: '检查中...',
+};
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.mjs'),
+      sandbox: false,
+    },
+  });
+
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show();
+  });
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+}
+
+function sendToRenderer(channel: string, ...args: unknown[]): void {
+  mainWindow?.webContents.send(channel, ...args);
+}
+
+function runOpencodeInit(): void {
+  ensureOpencodeReady((percent, message) => {
+    initStatus = { done: false, percent, message };
+    sendToRenderer(IPC_EVENTS.INIT_PROGRESS, { percent, message });
+  })
+    .then(() => {
+      initStatus = { done: true, percent: 100, message: '完成' };
+      sendToRenderer(IPC_EVENTS.INIT_DONE);
+      connectOpenCode({ hostname: '127.0.0.1', port: 4096 })
+        .then(() => {
+          sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: true });
+        })
+        .catch((err) => {
+          console.error('[main] OpenCode 自动连接失败:', (err as Error).message);
+          sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
+        });
+    })
+    .catch((err) => {
+      console.error('[main] OpenCode 初始化失败:', (err as Error).message);
+      initStatus = { done: true, percent: 100, message: '初始化失败' };
+      sendToRenderer(IPC_EVENTS.INIT_DONE);
+      sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
+    });
+}
+
+function registerOpenCodeIPC(): void {
+  ipcMain.handle(IPC.INIT_GET_STATUS, () => Promise.resolve(initStatus));
+
+  // 连接 OpenCode
+  ipcMain.handle(
+    IPC.OPENCODE_CONNECT,
+    async (_, options?: { hostname?: string; port?: number }) => {
+      try {
+        await connectOpenCode(options ?? {});
+        sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: true });
+        return { success: true };
+      } catch (err) {
+        sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
+        return { success: false, error: (err as Error).message };
+      }
+    }
+  );
+
+  // 断开连接
+  ipcMain.handle(IPC.OPENCODE_DISCONNECT, () => {
+    disconnectOpenCode();
+    sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
+    return { success: true };
+  });
+
+  // 健康检查
+  ipcMain.handle(IPC.OPENCODE_HEALTH, async () => {
+    return healthCheck();
+  });
+
+  // 创建会话（v2 扁平化 API）
+  ipcMain.handle(IPC.OPENCODE_SESSION_CREATE, async (_, body?: { title?: string }) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.session.create({ title: body?.title });
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 列出会话
+  ipcMain.handle(IPC.OPENCODE_SESSION_LIST, async () => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.session.list();
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 获取会话
+  ipcMain.handle(IPC.OPENCODE_SESSION_GET, async (_, id: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.session.get({ sessionID: id });
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 删除会话
+  ipcMain.handle(IPC.OPENCODE_SESSION_DELETE, async (_, id: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      await c.session.delete({ sessionID: id });
+      return { success: true };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 发送 prompt（Chat）- v2 扁平化
+  ipcMain.handle(
+    IPC.OPENCODE_PROMPT,
+    async (
+      _,
+      params: {
+        sessionId: string;
+        parts: Array<{ type: string; text?: string }>;
+        model?: { providerID?: string; modelID?: string };
+      }
+    ) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      try {
+        const model =
+          params.model?.providerID && params.model?.modelID
+            ? { providerID: params.model.providerID, modelID: params.model.modelID }
+            : undefined;
+        const res = await c.session.prompt({
+          sessionID: params.sessionId,
+          parts: params.parts.map((p) => ({ type: 'text' as const, text: p.text ?? '' })),
+          model,
+        });
+        return { data: res.data };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // Shell 执行 - v2 扁平化
+  ipcMain.handle(
+    IPC.OPENCODE_SHELL,
+    async (
+      _,
+      params: { sessionId: string; body: { command?: string; [key: string]: unknown } }
+    ) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      try {
+        const res = await c.session.shell({
+          sessionID: params.sessionId,
+          command: params.body?.command,
+        });
+        return { data: res.data };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // 命令执行 - v2 扁平化
+  ipcMain.handle(
+    IPC.OPENCODE_COMMAND,
+    async (_, params: { sessionId: string; body: Record<string, unknown> }) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      try {
+        const res = await c.session.command({
+          sessionID: params.sessionId,
+          command: params.body?.command as string | undefined,
+          arguments: params.body?.arguments as string | undefined,
+        });
+        return { data: res.data };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // 中止会话
+  ipcMain.handle(IPC.OPENCODE_ABORT, async (_, sessionId: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      await c.session.abort({ sessionID: sessionId });
+      return { success: true };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+}
+
+app.whenReady().then(() => {
+  electronApp.setAppUserModelId('com.opencode.jacket');
+
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window);
+  });
+
+  registerOpenCodeIPC();
+
+  // 事件流转发到渲染进程
+  subscribeEvents((event) => {
+    sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
+    // 解析流式文本块：支持 message.part.delta (delta) 和 properties.text
+    const ev = event as {
+      type?: string;
+      properties?: { text?: string; delta?: string };
+    };
+    if (ev?.properties?.text) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.text);
+    } else if (ev?.type === 'message.part.delta' && ev?.properties?.delta) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.delta);
+    }
+  });
+
+  createWindow();
+
+  mainWindow?.webContents.once('did-finish-load', () => {
+    runOpencodeInit();
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', () => {
+  disconnectOpenCode();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
