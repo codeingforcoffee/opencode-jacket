@@ -32,6 +32,21 @@ interface OpenCodeAPI {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => Promise<{ data?: unknown; error?: string }>;
+  fileRead: (params: { path: string; directory?: string }) => Promise<{
+    data?: string | null;
+    error?: string;
+  }>;
+  findFiles: (params?: {
+    query?: string;
+    type?: 'file' | 'directory';
+    limit?: number;
+    directory?: string;
+  }) => Promise<{ data?: string[]; error?: string }>;
+  projectCurrent: (directory?: string) => Promise<{ data?: unknown; error?: string }>;
+  filePickAndRead: () => Promise<{
+    data?: Array<{ name: string; path: string; content: string }>;
+    error?: string;
+  }>;
   onEvent: (callback: (event: unknown) => void) => () => void;
   onChunk: (callback: (text: string) => void) => () => void;
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => () => void;

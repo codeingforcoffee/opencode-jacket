@@ -16,6 +16,9 @@ const messages = {
       delete: '删除',
       copy: '复制',
       copied: '已复制',
+      addAttachment: '添加附件',
+      attachment: '附件',
+      removeAttachment: '移除',
     },
     mcp: {
       title: 'MCP 应用',
@@ -89,6 +92,9 @@ const messages = {
       delete: 'Delete',
       copy: 'Copy',
       copied: 'Copied',
+      addAttachment: 'Add attachment',
+      attachment: 'Attachment',
+      removeAttachment: 'Remove',
     },
     mcp: {
       title: 'MCP Apps',

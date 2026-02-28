@@ -24,6 +24,17 @@ const opencodeAPI = {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => ipcRenderer.invoke(IPC.OPENCODE_PROMPT, params),
+  fileRead: (params: { path: string; directory?: string }) =>
+    ipcRenderer.invoke(IPC.OPENCODE_FILE_READ, params),
+  findFiles: (params?: {
+    query?: string;
+    type?: 'file' | 'directory';
+    limit?: number;
+    directory?: string;
+  }) => ipcRenderer.invoke(IPC.OPENCODE_FIND_FILES, params),
+  projectCurrent: (directory?: string) =>
+    ipcRenderer.invoke(IPC.OPENCODE_PROJECT_CURRENT, directory),
+  filePickAndRead: () => ipcRenderer.invoke(IPC.FILE_PICK_AND_READ),
   onEvent: (callback: (event: unknown) => void) => {
     const fn = (_: unknown, event: unknown) => callback(event);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_EVENT, fn);

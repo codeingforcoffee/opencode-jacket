@@ -55,20 +55,46 @@
         </div>
       </div>
       <div class="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-        <el-input
-          v-model="inputText"
-          type="textarea"
-          :placeholder="$t('chat.placeholder')"
-          :rows="2"
-          :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
-          @keydown.enter.exact.prevent="sendMessage"
-        />
+        <div
+          v-if="attachments.length"
+          class="mb-2 flex flex-wrap gap-2"
+        >
+          <el-tag
+            v-for="(att, idx) in attachments"
+            :key="idx"
+            closable
+            size="small"
+            @close="removeAttachment(idx)"
+          >
+            {{ att.name }}
+          </el-tag>
+        </div>
+        <div class="flex gap-2 items-end">
+          <el-button
+            :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
+            @click="pickFiles"
+            title="添加附件"
+          >
+            <el-icon><DocumentAdd /></el-icon>
+          </el-button>
+          <el-input
+            v-model="inputText"
+            type="textarea"
+            class="flex-1 min-w-0"
+            :placeholder="$t('chat.placeholder')"
+            :rows="2"
+            :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
+            @keydown.enter.exact.prevent="sendMessage"
+          />
+        </div>
         <el-button
           type="primary"
           class="mt-2"
           :loading="sending"
           :disabled="
-            !connectionStore.connected || !sessionStore.currentSessionId || !inputText.trim()
+            !connectionStore.connected ||
+            !sessionStore.currentSessionId ||
+            (!inputText.trim() && !attachments.length)
           "
           @click="sendMessage"
         >
@@ -81,7 +107,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { DocumentCopy } from '@element-plus/icons-vue';
+import { DocumentCopy, DocumentAdd } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
 import { useI18n } from 'vue-i18n';
@@ -94,6 +120,26 @@ const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
 const inputText = ref('');
 const streamingText = ref('');
 const sending = ref(false);
+
+/** 附件：{ name, content } */
+const attachments = ref<Array<{ name: string; content: string }>>([]);
+
+async function pickFiles() {
+  if (typeof window.opencode === 'undefined') return;
+  const res = await window.opencode.filePickAndRead();
+  if (res.error) {
+    ElMessage.error(res.error);
+    return;
+  }
+  const files = res.data ?? [];
+  for (const f of files) {
+    attachments.value.push({ name: f.name, content: f.content });
+  }
+}
+
+function removeAttachment(idx: number) {
+  attachments.value.splice(idx, 1);
+}
 
 let unsubChunk: (() => void) | null = null;
 
@@ -114,11 +160,14 @@ async function loadMessages(sessionId: string) {
   }
   messages.value = raw.map((item) => {
     const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
-    const content =
+    let content =
       item.parts
         ?.filter((p): p is { type: string; text?: string } => p?.type === 'text')
         .map((p) => p.text ?? '')
         .join('') ?? '';
+    if (role === 'user') {
+      content = content.replace(/---\s*\n\s*\[文件: ([^\]]+)\]\s*\n[\s\S]*?\n---/g, '[附件: $1]');
+    }
     return { role, content };
   });
 }
@@ -146,17 +195,37 @@ async function copyToClipboard(text: string) {
 
 async function sendMessage() {
   const sessionId = sessionStore.currentSessionId;
-  if (!sessionId || !inputText.value.trim() || typeof window.opencode === 'undefined') return;
   const text = inputText.value.trim();
+  const atts = [...attachments.value];
+  if (!sessionId || typeof window.opencode === 'undefined') return;
+  if (!text && !atts.length) return;
+
   inputText.value = '';
-  messages.value.push({ role: 'user', content: text });
+  attachments.value = [];
+
+  const displayContent =
+    atts.length > 0
+      ? `[附件: ${atts.map((a) => a.name).join(', ')}]` + (text ? `\n\n${text}` : '')
+      : text;
+  messages.value.push({ role: 'user', content: displayContent });
   streamingText.value = '';
   sending.value = true;
+
+  const parts: Array<{ type: string; text?: string }> = [];
+  for (const a of atts) {
+    parts.push({
+      type: 'text',
+      text: `---\n[文件: ${a.name}]\n\n${a.content}\n---`,
+    });
+  }
+  if (text) {
+    parts.push({ type: 'text', text });
+  }
 
   try {
     const res = await window.opencode.prompt({
       sessionId,
-      parts: [{ type: 'text', text }],
+      parts,
     });
     if (res.error) {
       messages.value.push({ role: 'assistant', content: `错误: ${res.error}` });
