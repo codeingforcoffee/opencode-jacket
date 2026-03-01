@@ -35,6 +35,7 @@ interface OpenCodeAPI {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => Promise<{ data?: unknown; error?: string }>;
+  sessionAbort: (sessionId: string) => Promise<{ success?: boolean; error?: string }>;
   fileRead: (params: { path: string; directory?: string }) => Promise<{
     data?: string | null;
     error?: string;
@@ -51,7 +52,7 @@ interface OpenCodeAPI {
     error?: string;
   }>;
   onEvent: (callback: (event: unknown) => void) => () => void;
-  onChunk: (callback: (text: string) => void) => () => void;
+  onChunk: (callback: (sessionId: string, text: string) => void) => () => void;
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => () => void;
   initGetStatus: () => Promise<{ done: boolean; percent?: number; message?: string }>;
   onInitProgress: (callback: (payload: { percent: number; message: string }) => void) => () => void;

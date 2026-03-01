@@ -24,6 +24,8 @@ const opencodeAPI = {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => ipcRenderer.invoke(IPC.OPENCODE_PROMPT, params),
+  sessionAbort: (sessionId: string) =>
+    ipcRenderer.invoke(IPC.OPENCODE_SESSION_ABORT, sessionId),
   fileRead: (params: { path: string; directory?: string }) =>
     ipcRenderer.invoke(IPC.OPENCODE_FILE_READ, params),
   findFiles: (params?: {
@@ -40,8 +42,9 @@ const opencodeAPI = {
     ipcRenderer.on(IPC_EVENTS.OPENCODE_EVENT, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_EVENT, fn);
   },
-  onChunk: (callback: (text: string) => void) => {
-    const fn = (_: unknown, text: string) => callback(text);
+  onChunk: (callback: (sessionId: string, text: string) => void) => {
+    const fn = (_: unknown, sessionId: string, text: string) =>
+      callback(sessionId, text);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_CHUNK, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_CHUNK, fn);
   },

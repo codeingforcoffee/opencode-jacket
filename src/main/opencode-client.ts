@@ -33,7 +33,7 @@ export async function connectOpenCode(
 
   client = createOpencodeClient({ baseUrl });
 
-  // 订阅 SSE 事件流，转发给渲染进程
+  // 订阅 SSE 事件流，与 OpenWork 架构一致（ARCHITECTURE.md: client.event.subscribe）
   try {
     const events = await client.event.subscribe();
     eventAbortController = new AbortController();

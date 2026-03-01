@@ -184,6 +184,18 @@ function registerOpenCodeIPC(): void {
     }
   });
 
+  // 停止会话（Chat）
+  ipcMain.handle(IPC.OPENCODE_SESSION_ABORT, async (_, sessionId: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      await c.session.abort({ sessionID: sessionId });
+      return { success: true };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
   // 发送 prompt（Chat）- v2 扁平化
   ipcMain.handle(
     IPC.OPENCODE_PROMPT,
@@ -340,15 +352,25 @@ app.whenReady().then(() => {
   // 事件流转发到渲染进程
   subscribeEvents((event) => {
     sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
-    // 解析流式文本块：支持 message.part.delta、properties.text
+    // 解析流式文本块，支持多种事件格式，按 sessionID 过滤
     const ev = event as {
       type?: string;
-      properties?: { text?: string; delta?: string };
+      sessionID?: string;
+      properties?: { text?: string; delta?: string; sessionID?: string };
+      part?: { text?: string; sessionID?: string };
     };
+    const sessionId =
+      ev?.sessionID ?? ev?.properties?.sessionID ?? ev?.part?.sessionID ?? '';
+    let text = '';
     if (ev?.properties?.text) {
-      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.text);
+      text = ev.properties.text;
     } else if (ev?.type === 'message.part.delta' && ev?.properties?.delta) {
-      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.delta);
+      text = ev.properties.delta;
+    } else if (ev?.type === 'text' && ev?.part?.text) {
+      text = ev.part.text;
+    }
+    if (text) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, sessionId || '', text);
     }
   });
 

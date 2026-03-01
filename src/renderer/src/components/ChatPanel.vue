@@ -148,11 +148,11 @@
                 :placeholder="$t('chat.placeholder')"
                 :rows="2"
                 :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
-                @keydown.enter.exact.prevent="sendMessage"
+                @keydown.enter.exact="onEnterKeydown"
               />
               <ElButton
+                v-if="!sending"
                 type="primary"
-                :loading="sending"
                 :disabled="
                   !connectionStore.connected ||
                   !sessionStore.currentSessionId ||
@@ -161,8 +161,17 @@
                 class="!rounded-xl !px-5 !h-10 shrink-0"
                 @click="sendMessage"
               >
-                <ElIcon v-if="!sending" class="mr-1"><Promotion /></ElIcon>
+                <ElIcon class="mr-1"><Promotion /></ElIcon>
                 {{ $t('chat.send') }}
+              </ElButton>
+              <ElButton
+                v-else
+                type="danger"
+                class="!rounded-xl !px-5 !h-10 shrink-0"
+                @click="abortSession"
+              >
+                <ElIcon class="mr-1"><VideoPause /></ElIcon>
+                {{ $t('chat.stop') }}
               </ElButton>
             </div>
           </div>
@@ -182,6 +191,7 @@ import {
   MagicStick,
   Close,
   Promotion,
+  VideoPause,
 } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
@@ -214,6 +224,12 @@ async function pickFiles() {
 
 function removeAttachment(idx: number) {
   attachments.value.splice(idx, 1);
+}
+
+function onEnterKeydown(e: KeyboardEvent) {
+  if (e.isComposing) return;
+  e.preventDefault();
+  sendMessage();
 }
 
 let unsubChunk: (() => void) | null = null;
@@ -263,6 +279,28 @@ async function copyToClipboard(text: string) {
     ElMessage.success(t('chat.copied'));
   } catch {
     ElMessage.error('复制失败');
+  }
+}
+
+async function abortSession() {
+  const sessionId = sessionStore.currentSessionId;
+  if (!sessionId || typeof window.opencode === 'undefined') return;
+  try {
+    const res = await window.opencode.sessionAbort(sessionId);
+    if (res.error) {
+      ElMessage.error(res.error);
+    } else {
+      const currentStreaming = streamingText.value;
+      streamingText.value = '';
+      sending.value = false;
+      if (currentStreaming) {
+        messages.value.push({ role: 'assistant', content: currentStreaming });
+      }
+    }
+  } catch (err) {
+    ElMessage.error((err as Error).message);
+    sending.value = false;
+    streamingText.value = '';
   }
 }
 
@@ -322,8 +360,11 @@ async function sendMessage() {
 
 onMounted(() => {
   if (typeof window.opencode !== 'undefined') {
-    unsubChunk = window.opencode.onChunk((text) => {
-      if (sending.value) {
+    unsubChunk = window.opencode.onChunk((chunkSessionId, text) => {
+      if (
+        sending.value &&
+        (!chunkSessionId || chunkSessionId === sessionStore.currentSessionId)
+      ) {
         streamingText.value += text;
       }
     });
