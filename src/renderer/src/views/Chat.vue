@@ -141,10 +141,7 @@ onMounted(() => {
   loadSessions();
   if (typeof window.opencode !== 'undefined') {
     unsubChunk = window.opencode.onChunk((chunkSessionId, text) => {
-      if (
-        sending.value &&
-        (!chunkSessionId || chunkSessionId === currentSessionId.value)
-      ) {
+      if (sending.value && (!chunkSessionId || chunkSessionId === currentSessionId.value)) {
         streamingText.value += text;
       }
     });

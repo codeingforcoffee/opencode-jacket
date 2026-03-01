@@ -12,7 +12,17 @@ export const useSessionStore = defineStore('session', () => {
 
   async function loadSessions() {
     if (typeof window.opencode === 'undefined') return;
-    const res = await window.opencode.sessionList();
+    let directory: string | undefined;
+    try {
+      const project = await window.opencode.projectCurrent?.();
+      const data = project?.data as { worktree?: string } | undefined;
+      if (data?.worktree) {
+        directory = String(data.worktree).trim();
+      }
+    } catch {
+      // 无 workspace 时忽略
+    }
+    const res = await window.opencode.sessionList(directory);
     if (res.data && Array.isArray(res.data)) {
       sessions.value = res.data as Session[];
       if (sessions.value.length && !currentSessionId.value) {

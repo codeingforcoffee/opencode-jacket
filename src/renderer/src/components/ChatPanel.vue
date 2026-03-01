@@ -233,6 +233,29 @@ function onEnterKeydown(e: KeyboardEvent) {
 }
 
 let unsubChunk: (() => void) | null = null;
+let unsubEvent: (() => void) | null = null;
+
+// rAF 批处理：合并流式 chunk 更新，减少 Vue 重渲染
+let chunkBuffer = '';
+let rafScheduled = false;
+const DEBUG_CHUNK = true; // 排查用
+function scheduleStreamingUpdate(text: string) {
+  if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel 收到 chunk, len=', text.length, 'sending=', sending.value);
+  chunkBuffer += text;
+  if (rafScheduled) return;
+  rafScheduled = true;
+  requestAnimationFrame(() => {
+    rafScheduled = false;
+    if (chunkBuffer) {
+      streamingText.value += chunkBuffer;
+      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel rAF 应用, 追加 len=', chunkBuffer.length);
+      chunkBuffer = '';
+    }
+  });
+}
+function clearChunkBuffer() {
+  chunkBuffer = '';
+}
 
 async function loadMessages(sessionId: string) {
   if (!sessionId || typeof window.opencode === 'undefined') {
@@ -240,6 +263,8 @@ async function loadMessages(sessionId: string) {
     return;
   }
   const res = await window.opencode.sessionMessages(sessionId);
+  // 切换 session 后忽略过期的响应
+  if (sessionStore.currentSessionId !== sessionId) return;
   if (res.error) {
     messages.value = [];
     return;
@@ -264,6 +289,7 @@ async function loadMessages(sessionId: string) {
 watch(
   () => sessionStore.currentSessionId,
   (sessionId) => {
+    clearChunkBuffer();
     if (sessionId) {
       loadMessages(sessionId);
     } else {
@@ -285,6 +311,7 @@ async function copyToClipboard(text: string) {
 async function abortSession() {
   const sessionId = sessionStore.currentSessionId;
   if (!sessionId || typeof window.opencode === 'undefined') return;
+  clearChunkBuffer();
   try {
     const res = await window.opencode.sessionAbort(sessionId);
     if (res.error) {
@@ -334,38 +361,53 @@ async function sendMessage() {
   }
 
   try {
+    if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel prompt 发送, sessionId=', sessionId);
     const res = await window.opencode.prompt({
       sessionId,
       parts,
     });
+    if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel prompt 返回, error=', res.error);
     if (res.error) {
       messages.value.push({ role: 'assistant', content: `错误: ${res.error}` });
-    } else if (
-      res.data &&
-      typeof res.data === 'object' &&
-      'parts' in (res.data as { parts?: unknown[] })
-    ) {
-      const parts = (res.data as { parts?: Array<{ type?: string; text?: string }> }).parts;
-      const textPart = parts?.find((p) => p.type === 'text');
-      const content = textPart?.text ?? streamingText.value;
-      if (content) {
-        messages.value.push({ role: 'assistant', content });
-      }
+      clearChunkBuffer();
+      streamingText.value = '';
+      sending.value = false;
     }
-  } finally {
+    // 成功时由 session.idle 事件结束发送状态，不在此处设置 sending = false
+  } catch (err) {
+    ElMessage.error((err as Error).message);
+    clearChunkBuffer();
     streamingText.value = '';
     sending.value = false;
   }
 }
 
+function finishStreaming() {
+  if (streamingText.value) {
+    messages.value.push({ role: 'assistant', content: streamingText.value });
+  }
+  clearChunkBuffer();
+  streamingText.value = '';
+  sending.value = false;
+}
+
 onMounted(() => {
   if (typeof window.opencode !== 'undefined') {
     unsubChunk = window.opencode.onChunk((chunkSessionId, text) => {
-      if (
-        sending.value &&
-        (!chunkSessionId || chunkSessionId === sessionStore.currentSessionId)
-      ) {
-        streamingText.value += text;
+      if (sending.value && (!chunkSessionId || chunkSessionId === sessionStore.currentSessionId)) {
+        scheduleStreamingUpdate(text);
+      }
+    });
+    unsubEvent = window.opencode.onEvent((event) => {
+      const ev = event as { type?: string; properties?: { sessionID?: string; status?: string } };
+      if (!sending.value) return;
+      const sid = ev?.properties?.sessionID ?? '';
+      if (sid !== sessionStore.currentSessionId) return;
+      const isIdle =
+        ev?.type === 'session.idle' || (ev?.type === 'session.status' && ev?.properties?.status === 'idle');
+      if (isIdle) {
+        if (DEBUG_CHUNK) console.log('[opencode-debug] session 空闲，结束流式');
+        finishStreaming();
       }
     });
   }
@@ -373,6 +415,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   unsubChunk?.();
+  unsubEvent?.();
 });
 </script>
 

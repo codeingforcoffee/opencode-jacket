@@ -10,7 +10,7 @@ interface OpenCodeAPI {
   disconnect: () => Promise<{ success: boolean }>;
   health: () => Promise<{ healthy: boolean; version?: string }>;
   sessionCreate: (body?: { title?: string }) => Promise<{ data?: unknown; error?: string }>;
-  sessionList: () => Promise<{ data?: unknown; error?: string }>;
+  sessionList: (directory?: string) => Promise<{ data?: unknown; error?: string }>;
   sessionGet: (id: string) => Promise<{ data?: unknown; error?: string }>;
   sessionUpdate: (params: { sessionId: string; title?: string }) => Promise<{
     data?: unknown;

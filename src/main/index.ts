@@ -12,6 +12,8 @@ import {
   subscribeEvents,
 } from './opencode-client';
 import { ensureOpencodeReady } from './opencode-init';
+import { initChunkBuffer, pushChunk, flushChunkBuffer } from './utils/chunk-buffer';
+import { withTimeout } from './utils/with-timeout';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -98,6 +100,7 @@ function registerOpenCodeIPC(): void {
 
   // 断开连接
   ipcMain.handle(IPC.OPENCODE_DISCONNECT, () => {
+    flushChunkBuffer();
     disconnectOpenCode();
     sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
     return { success: true };
@@ -105,7 +108,7 @@ function registerOpenCodeIPC(): void {
 
   // 健康检查
   ipcMain.handle(IPC.OPENCODE_HEALTH, async () => {
-    return healthCheck();
+    return withTimeout(healthCheck(), 3000, 'health');
   });
 
   // 创建会话（v2 扁平化 API）
@@ -120,12 +123,17 @@ function registerOpenCodeIPC(): void {
     }
   });
 
-  // 列出会话
-  ipcMain.handle(IPC.OPENCODE_SESSION_LIST, async () => {
+  // 列出会话（支持 directory 过滤，服务端按 workspace 过滤）
+  ipcMain.handle(IPC.OPENCODE_SESSION_LIST, async (_, directory?: string) => {
     const c = getOpenCodeClient();
     if (!c) return { error: 'Not connected' };
     try {
-      const res = await c.session.list();
+      const queryDirectory = directory?.trim();
+      const res = await c.session.list(
+        queryDirectory
+          ? { directory: queryDirectory.replace(/\\/g, '/').replace(/\/+$/, '') || '/' }
+          : undefined
+      );
       return { data: res.data };
     } catch (err) {
       return { error: (err as Error).message };
@@ -177,7 +185,11 @@ function registerOpenCodeIPC(): void {
     const c = getOpenCodeClient();
     if (!c) return { error: 'Not connected' };
     try {
-      const res = await c.session.messages({ sessionID: sessionId });
+      const res = await withTimeout(
+        c.session.messages({ sessionID: sessionId }),
+        12000,
+        'session.messages'
+      );
       return { data: res.data };
     } catch (err) {
       return { error: (err as Error).message };
@@ -196,7 +208,7 @@ function registerOpenCodeIPC(): void {
     }
   });
 
-  // 发送 prompt（Chat）- v2 扁平化
+  // 发送 prompt（Chat）- 使用 promptAsync 立即返回，流式结果通过 SSE 推送
   ipcMain.handle(
     IPC.OPENCODE_PROMPT,
     async (
@@ -214,7 +226,7 @@ function registerOpenCodeIPC(): void {
           params.model?.providerID && params.model?.modelID
             ? { providerID: params.model.providerID, modelID: params.model.modelID }
             : undefined;
-        const res = await c.session.prompt({
+        const res = await c.session.promptAsync({
           sessionID: params.sessionId,
           parts: params.parts.map((p) => ({ type: 'text' as const, text: p.text ?? '' })),
           model,
@@ -349,18 +361,22 @@ app.whenReady().then(() => {
 
   registerOpenCodeIPC();
 
+  // Chunk 批处理：合并流式文本块，减少 IPC 与渲染压力
+  initChunkBuffer((sessionId, text) => {
+    sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, sessionId || '', text);
+  });
+
   // 事件流转发到渲染进程
+  const DEBUG_EVENTS = true; // 排查用
   subscribeEvents((event) => {
     sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
-    // 解析流式文本块，支持多种事件格式，按 sessionID 过滤
     const ev = event as {
       type?: string;
       sessionID?: string;
-      properties?: { text?: string; delta?: string; sessionID?: string };
-      part?: { text?: string; sessionID?: string };
+      properties?: { text?: string; delta?: string; sessionID?: string; part?: { type?: string; text?: string; sessionID?: string } };
+      part?: { text?: string; sessionID?: string; type?: string };
     };
-    const sessionId =
-      ev?.sessionID ?? ev?.properties?.sessionID ?? ev?.part?.sessionID ?? '';
+    const sessionId = ev?.sessionID ?? ev?.properties?.sessionID ?? ev?.properties?.part?.sessionID ?? ev?.part?.sessionID ?? '';
     let text = '';
     if (ev?.properties?.text) {
       text = ev.properties.text;
@@ -368,9 +384,21 @@ app.whenReady().then(() => {
       text = ev.properties.delta;
     } else if (ev?.type === 'text' && ev?.part?.text) {
       text = ev.part.text;
+    } else if (ev?.type === 'message.part.updated' && ev?.properties?.part) {
+      const part = ev.properties.part;
+      if (part?.type === 'text' && typeof part.text === 'string') {
+        text = part.text;
+      } else if (typeof ev?.properties?.delta === 'string') {
+        text = ev.properties.delta;
+      }
+    } else if (ev?.properties?.delta) {
+      text = ev.properties.delta;
     }
     if (text) {
-      sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, sessionId || '', text);
+      if (DEBUG_EVENTS) console.log('[opencode-debug] 提取到 chunk, sessionId=', sessionId, 'len=', text.length);
+      pushChunk(sessionId, text);
+    } else if (DEBUG_EVENTS && (ev?.type?.includes('part') || ev?.type?.includes('message'))) {
+      console.log('[opencode-debug] 未提取到文本, type=', ev?.type, 'ev=', JSON.stringify(ev).slice(0, 200));
     }
   });
 
@@ -386,6 +414,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  flushChunkBuffer();
   disconnectOpenCode();
   if (process.platform !== 'darwin') {
     app.quit();

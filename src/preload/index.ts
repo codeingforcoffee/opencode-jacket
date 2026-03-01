@@ -8,7 +8,7 @@ const opencodeAPI = {
   health: () => ipcRenderer.invoke(IPC.OPENCODE_HEALTH),
   sessionCreate: (body?: { title?: string }) =>
     ipcRenderer.invoke(IPC.OPENCODE_SESSION_CREATE, body),
-  sessionList: () => ipcRenderer.invoke(IPC.OPENCODE_SESSION_LIST),
+  sessionList: (directory?: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_LIST, directory),
   sessionGet: (id: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_GET, id),
   sessionUpdate: (params: { sessionId: string; title?: string }) =>
     ipcRenderer.invoke(IPC.OPENCODE_SESSION_UPDATE, params),
@@ -24,8 +24,7 @@ const opencodeAPI = {
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
   }) => ipcRenderer.invoke(IPC.OPENCODE_PROMPT, params),
-  sessionAbort: (sessionId: string) =>
-    ipcRenderer.invoke(IPC.OPENCODE_SESSION_ABORT, sessionId),
+  sessionAbort: (sessionId: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_ABORT, sessionId),
   fileRead: (params: { path: string; directory?: string }) =>
     ipcRenderer.invoke(IPC.OPENCODE_FILE_READ, params),
   findFiles: (params?: {
@@ -43,8 +42,7 @@ const opencodeAPI = {
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_EVENT, fn);
   },
   onChunk: (callback: (sessionId: string, text: string) => void) => {
-    const fn = (_: unknown, sessionId: string, text: string) =>
-      callback(sessionId, text);
+    const fn = (_: unknown, sessionId: string, text: string) => callback(sessionId, text);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_CHUNK, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_CHUNK, fn);
   },
