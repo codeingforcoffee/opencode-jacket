@@ -1,5 +1,5 @@
 <template>
-  <el-dialog
+  <ElDialog
     :model-value="modelValue"
     :title="$t('mcp.addModal.title')"
     width="480px"
@@ -7,52 +7,41 @@
     @update:model-value="emit('update:modelValue', $event)"
     @close="reset"
   >
-    <el-form label-position="top" class="space-y-4">
-      <el-form-item :label="$t('mcp.addModal.name')" required>
-        <el-input
+    <ElForm label-position="top" class="space-y-4">
+      <ElFormItem :label="$t('mcp.addModal.name')" required>
+        <ElInput
           v-model="name"
           :placeholder="$t('mcp.addModal.namePlaceholder')"
           maxlength="64"
           show-word-limit
         />
-      </el-form-item>
-      <el-form-item :label="$t('mcp.addModal.type')">
-        <el-radio-group v-model="serverType">
-          <el-radio label="remote">{{ $t('mcp.addModal.typeRemote') }}</el-radio>
-          <el-radio label="local">{{ $t('mcp.addModal.typeLocal') }}</el-radio>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item
-        v-if="serverType === 'remote'"
-        :label="$t('mcp.addModal.url')"
-        required
-      >
-        <el-input
-          v-model="url"
-          placeholder="https://mcp.example.com/sse"
-        />
-      </el-form-item>
-      <el-form-item
-        v-else
-        :label="$t('mcp.addModal.command')"
-        required
-      >
-        <el-input
+      </ElFormItem>
+      <ElFormItem :label="$t('mcp.addModal.type')">
+        <ElRadioGroup v-model="serverType">
+          <ElRadio label="remote">{{ $t('mcp.addModal.typeRemote') }}</ElRadio>
+          <ElRadio label="local">{{ $t('mcp.addModal.typeLocal') }}</ElRadio>
+        </ElRadioGroup>
+      </ElFormItem>
+      <ElFormItem v-if="serverType === 'remote'" :label="$t('mcp.addModal.url')" required>
+        <ElInput v-model="url" placeholder="https://mcp.example.com/sse" />
+      </ElFormItem>
+      <ElFormItem v-else :label="$t('mcp.addModal.command')" required>
+        <ElInput
           v-model="command"
           type="textarea"
           :placeholder="$t('mcp.addModal.commandPlaceholder')"
           :rows="2"
         />
-      </el-form-item>
-      <el-alert v-if="error" :title="error" type="error" show-icon />
-    </el-form>
+      </ElFormItem>
+      <ElAlert v-if="error" :title="error" type="error" show-icon />
+    </ElForm>
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">{{ $t('mcp.addModal.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <ElButton @click="emit('update:modelValue', false)">{{ $t('mcp.addModal.cancel') }}</ElButton>
+      <ElButton type="primary" :loading="submitting" @click="handleSubmit">
         {{ $t('mcp.addModal.add') }}
-      </el-button>
+      </ElButton>
     </template>
-  </el-dialog>
+  </ElDialog>
 </template>
 
 <script setup lang="ts">
@@ -76,9 +65,12 @@ function reset() {
   error.value = '';
 }
 
-watch(() => props.modelValue, (v) => {
-  if (!v) reset();
-});
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (!v) reset();
+  }
+);
 
 async function handleSubmit() {
   error.value = '';

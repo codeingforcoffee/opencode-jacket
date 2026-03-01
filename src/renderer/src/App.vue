@@ -1,9 +1,9 @@
 <template>
-  <el-config-provider :locale="locale === 'en' ? en : zhCn">
+  <ElConfigProvider :locale="locale === 'en' ? en : zhCn">
     <!-- 初始化 loading 遮罩 -->
     <div
       v-if="!initDone"
-      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#fafafa] dark:bg-[#0d0d0d]"
       :class="{ dark: themeStore.theme === 'dark' }"
     >
       <div class="mb-4 h-2 w-64 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
@@ -21,13 +21,13 @@
       <Sidebar />
 
       <!-- 中间：主内容 -->
-      <main class="flex-1 min-w-0 flex flex-col bg-gray-50 dark:bg-gray-950">
+      <main class="flex-1 min-w-0 flex flex-col bg-[#fafafa] dark:bg-[#0d0d0d]">
         <router-view v-slot="{ Component }">
           <component :is="Component" />
         </router-view>
       </main>
     </div>
-  </el-config-provider>
+  </ElConfigProvider>
 </template>
 
 <script setup lang="ts">

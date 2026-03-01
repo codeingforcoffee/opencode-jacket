@@ -22,9 +22,17 @@ export default defineConfig(
   {
     files: ['**/*.{ts,mts,tsx,vue}'],
     rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
       'vue/require-default-prop': 'off',
       'vue/multi-word-component-names': 'off',
       'vue/block-lang': ['error', { script: { lang: 'ts' } }],
+      'vue/component-name-in-template-casing': [
+        'error',
+        'PascalCase',
+        {
+          registeredComponentsOnly: true,
+        },
+      ],
     },
   },
   eslintConfigPrettier

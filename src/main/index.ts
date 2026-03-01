@@ -225,17 +225,14 @@ function registerOpenCodeIPC(): void {
   });
 
   // MCP 添加
-  ipcMain.handle(
-    IPC.MCP_ADD,
-    async (_, name: string, config: Record<string, unknown>) => {
-      try {
-        const result = await addMcp(name, config);
-        return { data: result };
-      } catch (err) {
-        return { error: (err as Error).message };
-      }
+  ipcMain.handle(IPC.MCP_ADD, async (_, name: string, config: Record<string, unknown>) => {
+    try {
+      const result = await addMcp(name, config);
+      return { data: result };
+    } catch (err) {
+      return { error: (err as Error).message };
     }
-  );
+  });
 
   // MCP 删除
   ipcMain.handle(IPC.MCP_REMOVE, async (_, name: string) => {
@@ -343,16 +340,12 @@ app.whenReady().then(() => {
   // 事件流转发到渲染进程
   subscribeEvents((event) => {
     sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
-    // 解析流式文本块：支持 message.part.delta、message.part.thinking_delta、properties.text
+    // 解析流式文本块：支持 message.part.delta、properties.text
     const ev = event as {
       type?: string;
-      properties?: { text?: string; delta?: string; thinking_delta?: string };
+      properties?: { text?: string; delta?: string };
     };
-    if (ev?.type === 'message.part.thinking_delta' && ev?.properties?.delta) {
-      sendToRenderer(IPC_EVENTS.OPENCODE_THINKING_CHUNK, ev.properties.delta);
-    } else if (ev?.properties?.thinking_delta) {
-      sendToRenderer(IPC_EVENTS.OPENCODE_THINKING_CHUNK, ev.properties.thinking_delta);
-    } else if (ev?.properties?.text) {
+    if (ev?.properties?.text) {
       sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.text);
     } else if (ev?.type === 'message.part.delta' && ev?.properties?.delta) {
       sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.delta);

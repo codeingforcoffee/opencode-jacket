@@ -1,15 +1,13 @@
 <template>
   <aside
-    class="w-56 flex flex-col shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+    class="w-56 flex flex-col shrink-0 border-r border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-[#111]"
   >
     <!-- 顶部：品牌 + 新建会话 -->
     <div class="p-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-      <div class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-        OpenCode
-      </div>
-      <el-button type="primary" size="small" class="w-full" @click="handleNewSession">
+      <div class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">OpenCode</div>
+      <ElButton type="primary" size="small" class="w-full" @click="handleNewSession">
         {{ $t('chat.newSession') }}
-      </el-button>
+      </ElButton>
     </div>
 
     <!-- 会话列表（始终显示，便于从任意页面返回对话） -->
@@ -32,22 +30,12 @@
             class="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0"
             @click.stop
           >
-            <el-button
-              text
-              size="small"
-              type="primary"
-              @click="handleRenameSession(s)"
-            >
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button
-              text
-              size="small"
-              type="danger"
-              @click="handleDeleteSession(s)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
+            <ElButton text size="small" type="primary" @click="handleRenameSession(s)">
+              <ElIcon><Edit /></ElIcon>
+            </ElButton>
+            <ElButton text size="small" type="danger" @click="handleDeleteSession(s)">
+              <ElIcon><Delete /></ElIcon>
+            </ElButton>
           </div>
         </div>
         <div
@@ -72,45 +60,49 @@
             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
         "
       >
-        <el-icon class="shrink-0" :size="18">
+        <ElIcon class="shrink-0" :size="18">
           <component :is="nav.icon" />
-        </el-icon>
+        </ElIcon>
         <span>{{ $t(nav.labelKey) }}</span>
       </router-link>
       <!-- 连接状态指示灯（仅绿/红灯，红灯悬浮提示） -->
-      <div class="flex items-center gap-3 px-3 py-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <el-tooltip
+      <div
+        class="flex items-center gap-3 px-3 py-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800"
+      >
+        <ElTooltip
           v-if="!connectionStore.connected"
           :content="$t('settings.disconnectedHint')"
           placement="top"
         >
           <span class="inline-block w-2 h-2 rounded-full bg-red-500 cursor-help shrink-0" />
-        </el-tooltip>
-        <span
-          v-else
-          class="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0"
-        />
+        </ElTooltip>
+        <span v-else class="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0" />
       </div>
     </div>
 
     <!-- 重命名会话对话框 -->
-    <el-dialog
+    <ElDialog
       v-model="renameDialogVisible"
       :title="$t('chat.rename')"
       width="360px"
       @close="renameTarget = null"
     >
-      <el-input v-model="renameInput" :placeholder="$t('chat.rename')" maxlength="64" show-word-limit />
+      <ElInput
+        v-model="renameInput"
+        :placeholder="$t('chat.rename')"
+        maxlength="64"
+        show-word-limit
+      />
       <template #footer>
-        <el-button @click="renameDialogVisible = false">{{ $t('mcp.addModal.cancel') }}</el-button>
-        <el-button type="primary" :loading="renameLoading" @click="confirmRename">
+        <ElButton @click="renameDialogVisible = false">{{ $t('mcp.addModal.cancel') }}</ElButton>
+        <ElButton type="primary" :loading="renameLoading" @click="confirmRename">
           {{ $t('chat.rename') }}
-        </el-button>
+        </ElButton>
       </template>
-    </el-dialog>
+    </ElDialog>
 
     <!-- 删除确认 -->
-    <el-dialog
+    <ElDialog
       v-model="deleteDialogVisible"
       :title="$t('chat.delete')"
       width="360px"
@@ -120,12 +112,12 @@
         {{ $t('chat.delete') }}「{{ deleteTarget?.title || deleteTarget?.id?.slice(0, 8) }}」？
       </p>
       <template #footer>
-        <el-button @click="deleteDialogVisible = false">{{ $t('mcp.addModal.cancel') }}</el-button>
-        <el-button type="danger" :loading="deleteLoading" @click="confirmDelete">
+        <ElButton @click="deleteDialogVisible = false">{{ $t('mcp.addModal.cancel') }}</ElButton>
+        <ElButton type="danger" :loading="deleteLoading" @click="confirmDelete">
           {{ $t('chat.delete') }}
-        </el-button>
+        </ElButton>
       </template>
-    </el-dialog>
+    </ElDialog>
   </aside>
 </template>
 
@@ -210,5 +202,4 @@ async function confirmDelete() {
     deleteLoading.value = false;
   }
 }
-
 </script>

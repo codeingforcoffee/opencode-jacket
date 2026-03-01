@@ -11,6 +11,7 @@ const messages = {
     chat: {
       placeholder: '输入消息，按 Enter 发送...',
       newSession: '新建会话',
+      emptyHint: '点击左侧「新建会话」开始与 AI 对话',
       send: '发送',
       rename: '重命名',
       delete: '删除',
@@ -19,8 +20,6 @@ const messages = {
       addAttachment: '添加附件',
       attachment: '附件',
       removeAttachment: '移除',
-      thinkingMode: '思考模式',
-      thinking: '思考过程',
     },
     mcp: {
       title: 'MCP 应用',
@@ -97,6 +96,7 @@ const messages = {
     chat: {
       placeholder: 'Type a message, press Enter to send...',
       newSession: 'New Session',
+      emptyHint: 'Click "New Session" on the left to start chatting with AI',
       send: 'Send',
       rename: 'Rename',
       delete: 'Delete',
@@ -105,8 +105,6 @@ const messages = {
       addAttachment: 'Add attachment',
       attachment: 'Attachment',
       removeAttachment: 'Remove',
-      thinkingMode: 'Thinking Mode',
-      thinking: 'Thinking',
     },
     mcp: {
       title: 'MCP Apps',

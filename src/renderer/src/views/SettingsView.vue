@@ -4,16 +4,16 @@
       {{ $t('settings.title') }}
     </h1>
 
-    <el-form label-position="top" class="space-y-8">
+    <ElForm label-position="top" class="space-y-8">
       <!-- 语言设置 -->
       <div>
         <h2 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
           {{ $t('settings.language') }}
         </h2>
-        <el-radio-group v-model="localeValue" @change="handleLocaleChange">
-          <el-radio value="zh">{{ $t('settings.languageZh') }}</el-radio>
-          <el-radio value="en">{{ $t('settings.languageEn') }}</el-radio>
-        </el-radio-group>
+        <ElRadioGroup v-model="localeValue" @change="handleLocaleChange">
+          <ElRadio value="zh">{{ $t('settings.languageZh') }}</ElRadio>
+          <ElRadio value="en">{{ $t('settings.languageEn') }}</ElRadio>
+        </ElRadioGroup>
       </div>
 
       <!-- 主题设置 -->
@@ -21,10 +21,10 @@
         <h2 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
           {{ $t('settings.theme') }}
         </h2>
-        <el-radio-group v-model="themeValue" @change="handleThemeChange">
-          <el-radio value="light">{{ $t('settings.themeLight') }}</el-radio>
-          <el-radio value="dark">{{ $t('settings.themeDark') }}</el-radio>
-        </el-radio-group>
+        <ElRadioGroup v-model="themeValue" @change="handleThemeChange">
+          <ElRadio value="light">{{ $t('settings.themeLight') }}</ElRadio>
+          <ElRadio value="dark">{{ $t('settings.themeDark') }}</ElRadio>
+        </ElRadioGroup>
       </div>
 
       <!-- 连接配置 -->
@@ -34,7 +34,7 @@
         </h2>
         <SettingsDrawer />
       </div>
-    </el-form>
+    </ElForm>
   </div>
 </template>
 

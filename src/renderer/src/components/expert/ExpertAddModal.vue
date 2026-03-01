@@ -1,5 +1,5 @@
 <template>
-  <el-dialog
+  <ElDialog
     :model-value="modelValue"
     :title="$t('expert.addModal.title')"
     width="520px"
@@ -7,48 +7,45 @@
     @update:model-value="emit('update:modelValue', $event)"
     @close="reset"
   >
-    <el-form label-position="top" class="space-y-4">
-      <el-form-item :label="$t('expert.name')" required>
-        <el-input
+    <ElForm label-position="top" class="space-y-4">
+      <ElFormItem :label="$t('expert.name')" required>
+        <ElInput
           v-model="name"
           placeholder="如：代码助手、文档专家"
           maxlength="32"
           show-word-limit
         />
-      </el-form-item>
-      <el-form-item :label="$t('expert.mcpSelect')">
-        <el-select
+      </ElFormItem>
+      <ElFormItem :label="$t('expert.mcpSelect')">
+        <ElSelect
           v-model="mcpIds"
           multiple
           collapse-tags
           placeholder="选择要启用的 MCP（可选）"
           class="w-full"
         >
-          <el-option
-            v-for="m in mcpList"
-            :key="m.name"
-            :label="m.name"
-            :value="m.name"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item :label="$t('expert.prompt')">
-        <el-input
+          <ElOption v-for="m in mcpList" :key="m.name" :label="m.name" :value="m.name" />
+        </ElSelect>
+      </ElFormItem>
+      <ElFormItem :label="$t('expert.prompt')">
+        <ElInput
           v-model="prompt"
           type="textarea"
           :rows="6"
           placeholder="设置系统提示词，定义专家角色与行为..."
         />
-      </el-form-item>
-      <el-alert v-if="error" :title="error" type="error" show-icon />
-    </el-form>
+      </ElFormItem>
+      <ElAlert v-if="error" :title="error" type="error" show-icon />
+    </ElForm>
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">{{ $t('expert.addModal.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSave">
+      <ElButton @click="emit('update:modelValue', false)">{{
+        $t('expert.addModal.cancel')
+      }}</ElButton>
+      <ElButton type="primary" :loading="submitting" @click="handleSave">
         {{ $t('expert.addModal.save') }}
-      </el-button>
+      </ElButton>
     </template>
-  </el-dialog>
+  </ElDialog>
 </template>
 
 <script setup lang="ts">

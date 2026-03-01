@@ -1,23 +1,23 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
     <div class="flex items-center gap-2 p-2 border-b border-gray-200 dark:border-gray-700">
-      <el-button type="primary" size="small" @click="createSession">{{
+      <ElButton type="primary" size="small" @click="createSession">{{
         $t('chat.newSession')
-      }}</el-button>
-      <el-select
+      }}</ElButton>
+      <ElSelect
         v-model="currentSessionId"
         placeholder="选择会话"
         size="small"
         class="w-48"
         filterable
       >
-        <el-option
+        <ElOption
           v-for="s in sessions"
           :key="s.id"
           :label="(s as { title?: string }).title || s.id"
           :value="s.id"
         />
-      </el-select>
+      </ElSelect>
     </div>
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div
@@ -47,7 +47,7 @@
       </div>
     </div>
     <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-      <el-input
+      <ElInput
         v-model="inputText"
         type="textarea"
         :placeholder="$t('chat.placeholder')"
@@ -55,7 +55,7 @@
         :disabled="!connectionStore.connected || !currentSessionId"
         @keydown.enter.exact.prevent="sendMessage"
       />
-      <el-button
+      <ElButton
         type="primary"
         class="mt-2"
         :loading="sending"
@@ -63,7 +63,7 @@
         @click="sendMessage"
       >
         {{ $t('chat.send') }}
-      </el-button>
+      </ElButton>
     </div>
   </div>
 </template>

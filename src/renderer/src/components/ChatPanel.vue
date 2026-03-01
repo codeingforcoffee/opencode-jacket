@@ -1,130 +1,171 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
+  <div class="chat-panel h-full flex flex-col bg-[#fafafa] dark:bg-[#0d0d0d]">
+    <!-- 空状态 -->
     <div
       v-if="!sessionStore.currentSessionId"
-      class="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400"
+      class="flex-1 flex flex-col items-center justify-center px-6"
     >
-      {{ $t('chat.newSession') }}
+      <div
+        class="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-gray-100 dark:bg-gray-800/80"
+      >
+        <ElIcon class="text-4xl text-gray-400 dark:text-gray-500">
+          <ChatDotRound />
+        </ElIcon>
+      </div>
+      <p class="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {{ $t('chat.newSession') }}
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-500 max-w-xs text-center">
+        {{ $t('chat.emptyHint') }}
+      </p>
     </div>
+
     <template v-else>
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
-        <div
-          v-for="(msg, i) in messages"
-          :key="i"
-          class="flex"
-          :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
-        >
+      <!-- 消息区域 -->
+      <div class="flex-1 overflow-y-auto px-6 py-8">
+        <div class="max-w-3xl mx-auto space-y-6">
           <div
-            class="max-w-[80%] rounded-lg px-4 py-2 group/msg relative"
-            :class="
-              msg.role === 'user'
-                ? 'bg-primary-500 text-white'
-                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
-            "
+            v-for="(msg, i) in messages"
+            :key="i"
+            class="flex gap-3"
+            :class="msg.role === 'user' ? 'flex-row-reverse' : ''"
           >
-            <!-- 思考过程（仅 assistant 且有 thinking 时） -->
-            <details v-if="msg.role === 'assistant' && msg.thinking" class="mb-2">
-              <summary class="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                {{ $t('chat.thinking') }}
-              </summary>
-              <div class="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
-                {{ msg.thinking }}
-              </div>
-            </details>
-            <div class="whitespace-pre-wrap">{{ msg.content }}</div>
-            <el-button
-              v-if="msg.role === 'assistant' && msg.content"
-              type="primary"
-              text
-              size="small"
-              class="absolute top-1 right-1 opacity-0 group-hover/msg:opacity-100 transition-opacity"
-              @click="copyToClipboard(msg.content)"
+            <!-- 头像 -->
+            <div
+              class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-sm font-medium"
+              :class="
+                msg.role === 'user'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+              "
             >
-              <el-icon><DocumentCopy /></el-icon>
-            </el-button>
+              <ElIcon v-if="msg.role === 'user'" :size="16"><User /></ElIcon>
+              <ElIcon v-else :size="16"><MagicStick /></ElIcon>
+            </div>
+            <!-- 消息气泡 -->
+            <div
+              class="flex-1 min-w-0 max-w-[85%] group/msg"
+              :class="msg.role === 'user' ? 'flex flex-col items-end' : ''"
+            >
+              <div
+                class="relative rounded-2xl px-4 py-3 shadow-sm transition-shadow hover:shadow-md"
+                :class="
+                  msg.role === 'user'
+                    ? 'bg-primary-500 text-white rounded-br-md'
+                    : 'bg-white dark:bg-gray-800/90 border border-gray-100 dark:border-gray-700/80 rounded-bl-md'
+                "
+              >
+                <div
+                  class="whitespace-pre-wrap text-[15px] leading-[1.6]"
+                  :class="msg.role === 'user' ? 'text-white' : 'text-gray-800 dark:text-gray-200'"
+                >
+                  {{ msg.content }}
+                </div>
+                <ElButton
+                  v-if="msg.role === 'assistant' && msg.content"
+                  type="primary"
+                  text
+                  size="small"
+                  class="absolute top-2 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity !p-1"
+                  @click="copyToClipboard(msg.content)"
+                >
+                  <ElIcon><DocumentCopy /></ElIcon>
+                </ElButton>
+              </div>
+            </div>
           </div>
-        </div>
-        <!-- 流式输出：思考 + 正文 -->
-        <div v-if="streamingThinkingText || streamingText" class="flex justify-start">
-          <div
-            class="max-w-[80%] rounded-lg px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group/msg relative"
-          >
-            <details v-if="streamingThinkingText" class="mb-2" open>
-              <summary class="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                {{ $t('chat.thinking') }}
-              </summary>
-              <div class="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
-                {{ streamingThinkingText }}<span class="animate-pulse">▌</span>
-              </div>
-            </details>
-            <span class="whitespace-pre-wrap">{{ streamingText }}</span>
-            <span v-if="!streamingThinkingText" class="animate-pulse">▌</span>
-            <el-button
-              v-if="streamingText"
-              type="primary"
-              text
-              size="small"
-              class="absolute top-1 right-1 opacity-0 group-hover/msg:opacity-100 transition-opacity"
-              @click="copyToClipboard(streamingText)"
+
+          <!-- 流式输出 -->
+          <div v-if="streamingText" class="flex gap-3">
+            <div
+              class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
             >
-              <el-icon><DocumentCopy /></el-icon>
-            </el-button>
+              <ElIcon :size="16"><MagicStick /></ElIcon>
+            </div>
+            <div class="flex-1 min-w-0 max-w-[85%]">
+              <div
+                class="relative rounded-2xl rounded-bl-md px-4 py-3 bg-white dark:bg-gray-800/90 border border-gray-100 dark:border-gray-700/80 shadow-sm group/msg"
+              >
+                <span
+                  class="whitespace-pre-wrap text-[15px] leading-[1.6] text-gray-800 dark:text-gray-200"
+                >
+                  {{ streamingText }}
+                </span>
+                <span class="animate-pulse">▌</span>
+                <ElButton
+                  v-if="streamingText"
+                  type="primary"
+                  text
+                  size="small"
+                  class="absolute top-2 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity !p-1"
+                  @click="copyToClipboard(streamingText)"
+                >
+                  <ElIcon><DocumentCopy /></ElIcon>
+                </ElButton>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-        <div
-          v-if="attachments.length"
-          class="mb-2 flex flex-wrap gap-2"
-        >
-          <el-tag
-            v-for="(att, idx) in attachments"
-            :key="idx"
-            closable
-            size="small"
-            @close="removeAttachment(idx)"
+
+      <!-- 输入区域 -->
+      <div class="shrink-0 px-6 pb-6 pt-4">
+        <div class="max-w-3xl mx-auto">
+          <div
+            class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 shadow-sm overflow-hidden transition-all focus-within:border-primary-400 dark:focus-within:border-primary-500 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary-500/20"
           >
-            {{ att.name }}
-          </el-tag>
-        </div>
-        <div class="flex gap-2 items-end">
-          <el-button
-            :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
-            @click="pickFiles"
-            title="添加附件"
-          >
-            <el-icon><DocumentAdd /></el-icon>
-          </el-button>
-          <el-input
-            v-model="inputText"
-            type="textarea"
-            class="flex-1 min-w-0"
-            :placeholder="$t('chat.placeholder')"
-            :rows="2"
-            :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
-            @keydown.enter.exact.prevent="sendMessage"
-          />
-        </div>
-        <div class="mt-2 flex items-center justify-between"
-        >
-          <el-switch
-            v-model="thinkingMode"
-            :active-text="$t('chat.thinkingMode')"
-            inline-prompt
-            class="mr-2"
-          />
-          <el-button
-            type="primary"
-            :loading="sending"
-            :disabled="
-              !connectionStore.connected ||
-              !sessionStore.currentSessionId ||
-              (!inputText.trim() && !attachments.length)
-            "
-            @click="sendMessage"
-          >
-            {{ $t('chat.send') }}
-          </el-button>
+            <div
+              v-if="attachments.length"
+              class="px-4 py-2 flex flex-wrap gap-2 border-b border-gray-100 dark:border-gray-700"
+            >
+              <span
+                v-for="(att, idx) in attachments"
+                :key="idx"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
+              >
+                {{ att.name }}
+                <ElIcon
+                  class="cursor-pointer hover:text-gray-900 dark:hover:text-gray-100 text-xs"
+                  @click="removeAttachment(idx)"
+                >
+                  <Close />
+                </ElIcon>
+              </span>
+            </div>
+            <div class="flex items-end gap-2 p-3">
+              <ElButton
+                :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
+                title="添加附件"
+                class="!rounded-xl !p-2.5 shrink-0 text-gray-500 hover:text-primary-500 hover:!bg-primary-50 dark:hover:!bg-primary-900/30"
+                @click="pickFiles"
+              >
+                <ElIcon :size="20"><DocumentAdd /></ElIcon>
+              </ElButton>
+              <ElInput
+                v-model="inputText"
+                type="textarea"
+                class="chat-input flex-1 min-w-0"
+                :placeholder="$t('chat.placeholder')"
+                :rows="2"
+                :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
+                @keydown.enter.exact.prevent="sendMessage"
+              />
+              <ElButton
+                type="primary"
+                :loading="sending"
+                :disabled="
+                  !connectionStore.connected ||
+                  !sessionStore.currentSessionId ||
+                  (!inputText.trim() && !attachments.length)
+                "
+                class="!rounded-xl !px-5 !h-10 shrink-0"
+                @click="sendMessage"
+              >
+                <ElIcon v-if="!sending" class="mr-1"><Promotion /></ElIcon>
+                {{ $t('chat.send') }}
+              </ElButton>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -132,28 +173,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
-import { DocumentCopy, DocumentAdd } from '@element-plus/icons-vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import {
+  DocumentCopy,
+  DocumentAdd,
+  ChatDotRound,
+  User,
+  MagicStick,
+  Close,
+  Promotion,
+} from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
-import { useChatStore } from '@renderer/stores/chat';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
 
 const { t } = useI18n();
 const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
-const chatStore = useChatStore();
-const messages = ref<Array<{ role: 'user' | 'assistant'; content: string; thinking?: string }>>([]);
+const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 const inputText = ref('');
 const streamingText = ref('');
-const streamingThinkingText = ref('');
 const sending = ref(false);
-
-const thinkingMode = computed({
-  get: () => chatStore.thinkingMode,
-  set: (v) => chatStore.setThinkingMode(v),
-});
 
 /** 附件：{ name, content } */
 const attachments = ref<Array<{ name: string; content: string }>>([]);
@@ -194,16 +235,13 @@ async function loadMessages(sessionId: string) {
   }
   messages.value = raw.map((item) => {
     const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
-    const textParts = item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'text')
-      ?? [];
-    const thinkingParts = item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'thinking')
-      ?? [];
+    const textParts =
+      item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'text') ?? [];
     let content = textParts.map((p) => p.text ?? '').join('');
-    const thinking = thinkingParts.map((p) => p.text ?? '').join('') || undefined;
     if (role === 'user') {
       content = content.replace(/---\s*\n\s*\[文件: ([^\]]+)\]\s*\n[\s\S]*?\n---/g, '[附件: $1]');
     }
-    return { role, content, thinking };
+    return { role, content };
   });
 }
 
@@ -244,7 +282,6 @@ async function sendMessage() {
       : text;
   messages.value.push({ role: 'user', content: displayContent });
   streamingText.value = '';
-  streamingThinkingText.value = '';
   sending.value = true;
 
   const parts: Array<{ type: string; text?: string }> = [];
@@ -272,21 +309,16 @@ async function sendMessage() {
     ) {
       const parts = (res.data as { parts?: Array<{ type?: string; text?: string }> }).parts;
       const textPart = parts?.find((p) => p.type === 'text');
-      const thinkingPart = parts?.find((p) => p.type === 'thinking');
       const content = textPart?.text ?? streamingText.value;
-      const thinking = thinkingPart?.text ?? (streamingThinkingText.value || undefined);
-      if (content || thinking) {
-        messages.value.push({ role: 'assistant', content: content || '', thinking });
+      if (content) {
+        messages.value.push({ role: 'assistant', content });
       }
     }
   } finally {
     streamingText.value = '';
-    streamingThinkingText.value = '';
     sending.value = false;
   }
 }
-
-let unsubThinkingChunk: (() => void) | null = null;
 
 onMounted(() => {
   if (typeof window.opencode !== 'undefined') {
@@ -295,16 +327,25 @@ onMounted(() => {
         streamingText.value += text;
       }
     });
-    unsubThinkingChunk = window.opencode.onThinkingChunk((text) => {
-      if (sending.value) {
-        streamingThinkingText.value += text;
-      }
-    });
   }
 });
 
 onUnmounted(() => {
   unsubChunk?.();
-  unsubThinkingChunk?.();
 });
 </script>
+
+<style scoped>
+.chat-input :deep(.el-textarea__inner) {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: none;
+}
+.chat-input :deep(.el-textarea__inner:focus) {
+  box-shadow: none;
+}
+</style>

@@ -22,7 +22,10 @@ interface OpenCodeAPI {
     error?: string;
   }>;
   mcpList: () => Promise<{ data?: unknown; error?: string }>;
-  mcpAdd: (name: string, config: Record<string, unknown>) => Promise<{
+  mcpAdd: (
+    name: string,
+    config: Record<string, unknown>
+  ) => Promise<{
     data?: unknown;
     error?: string;
   }>;
@@ -49,7 +52,6 @@ interface OpenCodeAPI {
   }>;
   onEvent: (callback: (event: unknown) => void) => () => void;
   onChunk: (callback: (text: string) => void) => () => void;
-  onThinkingChunk: (callback: (text: string) => void) => () => void;
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => () => void;
   initGetStatus: () => Promise<{ done: boolean; percent?: number; message?: string }>;
   onInitProgress: (callback: (payload: { percent: number; message: string }) => void) => () => void;

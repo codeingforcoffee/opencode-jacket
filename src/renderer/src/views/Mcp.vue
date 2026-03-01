@@ -10,34 +10,28 @@
         </p>
       </div>
 
-      <el-alert
-        v-if="loadError"
-        :title="loadError"
-        type="error"
-        show-icon
-        class="mb-4"
-      />
+      <ElAlert v-if="loadError" :title="loadError" type="error" show-icon class="mb-4" />
 
       <div class="flex justify-between items-center">
         <span class="text-sm text-gray-600 dark:text-gray-400">
           {{ $t('mcp.connectedCount', { count: mcpList.length }) }}
         </span>
-        <el-button type="primary" size="small" @click="showAddModal = true">
-          <el-icon class="mr-1"><Plus /></el-icon>
+        <ElButton type="primary" size="small" @click="showAddModal = true">
+          <ElIcon class="mr-1"><Plus /></ElIcon>
           {{ $t('mcp.addServer') }}
-        </el-button>
+        </ElButton>
       </div>
 
       <div v-if="loading" class="flex justify-center py-12">
-        <el-icon class="animate-spin text-2xl"><Loading /></el-icon>
+        <ElIcon class="animate-spin text-2xl"><Loading /></ElIcon>
       </div>
 
       <div v-else-if="!mcpList.length" class="text-center py-12 text-gray-500 dark:text-gray-400">
         <p>{{ $t('mcp.noServers') }}</p>
         <p class="mt-2 text-sm">{{ $t('mcp.noServersHint') }}</p>
-        <el-button type="primary" class="mt-4" @click="showAddModal = true">
+        <ElButton type="primary" class="mt-4" @click="showAddModal = true">
           {{ $t('mcp.addServer') }}
-        </el-button>
+        </ElButton>
       </div>
 
       <div v-else class="space-y-3">
@@ -50,30 +44,30 @@
             <div
               class="w-10 h-10 rounded-lg flex items-center justify-center bg-primary-100 dark:bg-primary-900/30"
             >
-              <el-icon class="text-primary-600 dark:text-primary-400 text-xl">
+              <ElIcon class="text-primary-600 dark:text-primary-400 text-xl">
                 <Connection />
-              </el-icon>
+              </ElIcon>
             </div>
             <div>
               <div class="font-medium text-gray-900 dark:text-gray-100">{{ entry.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ entry.config.type === 'remote' ? entry.config.url : (entry.config.command || []).join(' ') }}
+                {{
+                  entry.config.type === 'remote'
+                    ? entry.config.url
+                    : (entry.config.command || []).join(' ')
+                }}
               </div>
             </div>
           </div>
-          <el-button type="danger" text size="small" @click="handleRemove(entry.name)">
+          <ElButton type="danger" text size="small" @click="handleRemove(entry.name)">
             {{ $t('mcp.remove') }}
-          </el-button>
+          </ElButton>
         </div>
       </div>
     </div>
 
     <!-- 添加 MCP 模态框 -->
-    <McpAddModal
-      v-model="showAddModal"
-      @added="handleAdded"
-    />
-
+    <McpAddModal v-model="showAddModal" @added="handleAdded" />
   </div>
 </template>
 

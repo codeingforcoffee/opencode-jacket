@@ -1,30 +1,30 @@
 <template>
   <div class="p-4">
-    <el-form label-position="top" class="space-y-4">
-      <el-form-item :label="$t('settings.hostname')">
-        <el-input v-model="hostname" placeholder="127.0.0.1" />
-      </el-form-item>
-      <el-form-item :label="$t('settings.port')">
-        <el-input-number v-model="port" :min="1" :max="65535" class="w-full" />
-      </el-form-item>
-      <el-form-item>
-        <el-button
+    <ElForm label-position="top" class="space-y-4">
+      <ElFormItem :label="$t('settings.hostname')">
+        <ElInput v-model="hostname" placeholder="127.0.0.1" />
+      </ElFormItem>
+      <ElFormItem :label="$t('settings.port')">
+        <ElInputNumber v-model="port" :min="1" :max="65535" class="w-full" />
+      </ElFormItem>
+      <ElFormItem>
+        <ElButton
           v-if="!connectionStore.connected"
           type="primary"
           :loading="connecting"
           @click="handleConnect"
         >
           {{ $t('settings.connect') }}
-        </el-button>
-        <el-button v-else type="danger" :loading="disconnecting" @click="handleDisconnect">
+        </ElButton>
+        <ElButton v-else type="danger" :loading="disconnecting" @click="handleDisconnect">
           {{ $t('settings.disconnect') }}
-        </el-button>
-        <el-button :loading="checking" @click="handleHealthCheck">
+        </ElButton>
+        <ElButton :loading="checking" @click="handleHealthCheck">
           {{ $t('settings.healthCheck') }}
-        </el-button>
-      </el-form-item>
-    </el-form>
-    <el-alert
+        </ElButton>
+      </ElFormItem>
+    </ElForm>
+    <ElAlert
       v-if="healthResult"
       :title="healthResult.healthy ? 'OpenCode 服务正常' : 'OpenCode 服务不可用'"
       :type="healthResult.healthy ? 'success' : 'error'"
