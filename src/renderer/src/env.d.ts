@@ -49,6 +49,7 @@ interface OpenCodeAPI {
   }>;
   onEvent: (callback: (event: unknown) => void) => () => void;
   onChunk: (callback: (text: string) => void) => () => void;
+  onThinkingChunk: (callback: (text: string) => void) => () => void;
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => () => void;
   initGetStatus: () => Promise<{ done: boolean; percent?: number; message?: string }>;
   onInitProgress: (callback: (payload: { percent: number; message: string }) => void) => () => void;

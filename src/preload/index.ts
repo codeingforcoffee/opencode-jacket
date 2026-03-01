@@ -45,6 +45,11 @@ const opencodeAPI = {
     ipcRenderer.on(IPC_EVENTS.OPENCODE_CHUNK, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_CHUNK, fn);
   },
+  onThinkingChunk: (callback: (text: string) => void) => {
+    const fn = (_: unknown, text: string) => callback(text);
+    ipcRenderer.on(IPC_EVENTS.OPENCODE_THINKING_CHUNK, fn);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_THINKING_CHUNK, fn);
+  },
   onConnectionStatus: (callback: (status: { connected: boolean }) => void) => {
     const fn = (_: unknown, status: { connected: boolean }) => callback(status);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, fn);

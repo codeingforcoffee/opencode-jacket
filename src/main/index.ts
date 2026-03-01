@@ -343,12 +343,16 @@ app.whenReady().then(() => {
   // 事件流转发到渲染进程
   subscribeEvents((event) => {
     sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
-    // 解析流式文本块：支持 message.part.delta (delta) 和 properties.text
+    // 解析流式文本块：支持 message.part.delta、message.part.thinking_delta、properties.text
     const ev = event as {
       type?: string;
-      properties?: { text?: string; delta?: string };
+      properties?: { text?: string; delta?: string; thinking_delta?: string };
     };
-    if (ev?.properties?.text) {
+    if (ev?.type === 'message.part.thinking_delta' && ev?.properties?.delta) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_THINKING_CHUNK, ev.properties.delta);
+    } else if (ev?.properties?.thinking_delta) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_THINKING_CHUNK, ev.properties.thinking_delta);
+    } else if (ev?.properties?.text) {
       sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.text);
     } else if (ev?.type === 'message.part.delta' && ev?.properties?.delta) {
       sendToRenderer(IPC_EVENTS.OPENCODE_CHUNK, ev.properties.delta);

@@ -22,6 +22,15 @@
                 : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
             "
           >
+            <!-- 思考过程（仅 assistant 且有 thinking 时） -->
+            <details v-if="msg.role === 'assistant' && msg.thinking" class="mb-2">
+              <summary class="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                {{ $t('chat.thinking') }}
+              </summary>
+              <div class="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
+                {{ msg.thinking }}
+              </div>
+            </details>
             <div class="whitespace-pre-wrap">{{ msg.content }}</div>
             <el-button
               v-if="msg.role === 'assistant' && msg.content"
@@ -35,12 +44,21 @@
             </el-button>
           </div>
         </div>
-        <div v-if="streamingText" class="flex justify-start">
+        <!-- 流式输出：思考 + 正文 -->
+        <div v-if="streamingThinkingText || streamingText" class="flex justify-start">
           <div
             class="max-w-[80%] rounded-lg px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group/msg relative"
           >
+            <details v-if="streamingThinkingText" class="mb-2" open>
+              <summary class="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                {{ $t('chat.thinking') }}
+              </summary>
+              <div class="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
+                {{ streamingThinkingText }}<span class="animate-pulse">▌</span>
+              </div>
+            </details>
             <span class="whitespace-pre-wrap">{{ streamingText }}</span>
-            <span class="animate-pulse">▌</span>
+            <span v-if="!streamingThinkingText" class="animate-pulse">▌</span>
             <el-button
               v-if="streamingText"
               type="primary"
@@ -87,39 +105,55 @@
             @keydown.enter.exact.prevent="sendMessage"
           />
         </div>
-        <el-button
-          type="primary"
-          class="mt-2"
-          :loading="sending"
-          :disabled="
-            !connectionStore.connected ||
-            !sessionStore.currentSessionId ||
-            (!inputText.trim() && !attachments.length)
-          "
-          @click="sendMessage"
+        <div class="mt-2 flex items-center justify-between"
         >
-          {{ $t('chat.send') }}
-        </el-button>
+          <el-switch
+            v-model="thinkingMode"
+            :active-text="$t('chat.thinkingMode')"
+            inline-prompt
+            class="mr-2"
+          />
+          <el-button
+            type="primary"
+            :loading="sending"
+            :disabled="
+              !connectionStore.connected ||
+              !sessionStore.currentSessionId ||
+              (!inputText.trim() && !attachments.length)
+            "
+            @click="sendMessage"
+          >
+            {{ $t('chat.send') }}
+          </el-button>
+        </div>
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { DocumentCopy, DocumentAdd } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
+import { useChatStore } from '@renderer/stores/chat';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
 
 const { t } = useI18n();
 const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
-const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+const chatStore = useChatStore();
+const messages = ref<Array<{ role: 'user' | 'assistant'; content: string; thinking?: string }>>([]);
 const inputText = ref('');
 const streamingText = ref('');
+const streamingThinkingText = ref('');
 const sending = ref(false);
+
+const thinkingMode = computed({
+  get: () => chatStore.thinkingMode,
+  set: (v) => chatStore.setThinkingMode(v),
+});
 
 /** 附件：{ name, content } */
 const attachments = ref<Array<{ name: string; content: string }>>([]);
@@ -160,15 +194,16 @@ async function loadMessages(sessionId: string) {
   }
   messages.value = raw.map((item) => {
     const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
-    let content =
-      item.parts
-        ?.filter((p): p is { type: string; text?: string } => p?.type === 'text')
-        .map((p) => p.text ?? '')
-        .join('') ?? '';
+    const textParts = item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'text')
+      ?? [];
+    const thinkingParts = item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'thinking')
+      ?? [];
+    let content = textParts.map((p) => p.text ?? '').join('');
+    const thinking = thinkingParts.map((p) => p.text ?? '').join('') || undefined;
     if (role === 'user') {
       content = content.replace(/---\s*\n\s*\[文件: ([^\]]+)\]\s*\n[\s\S]*?\n---/g, '[附件: $1]');
     }
-    return { role, content };
+    return { role, content, thinking };
   });
 }
 
@@ -209,6 +244,7 @@ async function sendMessage() {
       : text;
   messages.value.push({ role: 'user', content: displayContent });
   streamingText.value = '';
+  streamingThinkingText.value = '';
   sending.value = true;
 
   const parts: Array<{ type: string; text?: string }> = [];
@@ -236,22 +272,32 @@ async function sendMessage() {
     ) {
       const parts = (res.data as { parts?: Array<{ type?: string; text?: string }> }).parts;
       const textPart = parts?.find((p) => p.type === 'text');
-      if (textPart?.text) {
-        messages.value.push({ role: 'assistant', content: textPart.text });
+      const thinkingPart = parts?.find((p) => p.type === 'thinking');
+      const content = textPart?.text ?? streamingText.value;
+      const thinking = thinkingPart?.text ?? (streamingThinkingText.value || undefined);
+      if (content || thinking) {
+        messages.value.push({ role: 'assistant', content: content || '', thinking });
       }
     }
   } finally {
     streamingText.value = '';
+    streamingThinkingText.value = '';
     sending.value = false;
   }
 }
 
+let unsubThinkingChunk: (() => void) | null = null;
+
 onMounted(() => {
   if (typeof window.opencode !== 'undefined') {
     unsubChunk = window.opencode.onChunk((text) => {
-      // 仅在本面板发起 prompt 请求时显示流式输出
       if (sending.value) {
         streamingText.value += text;
+      }
+    });
+    unsubThinkingChunk = window.opencode.onThinkingChunk((text) => {
+      if (sending.value) {
+        streamingThinkingText.value += text;
       }
     });
   }
@@ -259,5 +305,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   unsubChunk?.();
+  unsubThinkingChunk?.();
 });
 </script>

@@ -22,6 +22,12 @@ const router = createRouter({
       component: () => import('@renderer/views/Expert.vue'),
       meta: { title: '专家探索' },
     },
+    {
+      path: '/settings',
+      name: 'Settings',
+      component: () => import('@renderer/views/SettingsView.vue'),
+      meta: { title: '设置' },
+    },
   ],
 });
 

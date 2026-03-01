@@ -3,7 +3,7 @@ import { createI18n } from 'vue-i18n';
 const messages = {
   zh: {
     nav: {
-      chat: '对话',
+      chat: '会话',
       mcp: 'MCP',
       expert: '专家探索',
       settings: '设置',
@@ -19,6 +19,8 @@ const messages = {
       addAttachment: '添加附件',
       attachment: '附件',
       removeAttachment: '移除',
+      thinkingMode: '思考模式',
+      thinking: '思考过程',
     },
     mcp: {
       title: 'MCP 应用',
@@ -66,7 +68,7 @@ const messages = {
       },
     },
     settings: {
-      title: 'OpenCode 连接设置',
+      title: '设置',
       hostname: '主机',
       port: '端口',
       connect: '连接',
@@ -75,6 +77,14 @@ const messages = {
       status: '连接状态',
       connected: '已连接',
       disconnected: '未连接',
+      disconnectedHint: '未连接 OpenCode，请在设置中配置并连接',
+      language: '语言',
+      languageZh: '简体中文',
+      languageEn: 'English',
+      theme: '主题',
+      themeLight: '浅色',
+      themeDark: '深色',
+      connection: '连接配置',
     },
   },
   en: {
@@ -95,6 +105,8 @@ const messages = {
       addAttachment: 'Add attachment',
       attachment: 'Attachment',
       removeAttachment: 'Remove',
+      thinkingMode: 'Thinking Mode',
+      thinking: 'Thinking',
     },
     mcp: {
       title: 'MCP Apps',
@@ -142,7 +154,7 @@ const messages = {
       },
     },
     settings: {
-      title: 'OpenCode Connection',
+      title: 'Settings',
       hostname: 'Hostname',
       port: 'Port',
       connect: 'Connect',
@@ -151,13 +163,24 @@ const messages = {
       status: 'Status',
       connected: 'Connected',
       disconnected: 'Disconnected',
+      disconnectedHint: 'Not connected to OpenCode. Configure and connect in Settings.',
+      language: 'Language',
+      languageZh: '简体中文',
+      languageEn: 'English',
+      theme: 'Theme',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      connection: 'Connection',
     },
   },
 };
 
+const storedLocale = localStorage.getItem('locale') as 'zh' | 'en' | null;
+const initialLocale = storedLocale === 'zh' || storedLocale === 'en' ? storedLocale : 'zh';
+
 export default createI18n({
   legacy: false,
-  locale: 'zh',
+  locale: initialLocale,
   fallbackLocale: 'en',
   messages,
 });
