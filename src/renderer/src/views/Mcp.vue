@@ -74,14 +74,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { Plus, Loading, Connection } from '@element-plus/icons-vue';
-interface McpEntry {
-  name: string;
-  config: { type: string; url?: string; command?: string[] };
-  source?: string;
-}
+import type { McpItem } from '@renderer/types';
 import McpAddModal from '@renderer/components/mcp/McpAddModal.vue';
 
-const mcpList = ref<McpEntry[]>([]);
+const mcpList = ref<McpItem[]>([]);
 const loading = ref(true);
 const loadError = ref('');
 const showAddModal = ref(false);
@@ -95,7 +91,7 @@ async function loadMcp() {
       loadError.value = res.error;
       mcpList.value = [];
     } else if (res.data && Array.isArray(res.data)) {
-      mcpList.value = res.data as McpEntry[];
+      mcpList.value = res.data as McpItem[];
     }
   } finally {
     loading.value = false;

@@ -45,11 +45,8 @@ const opencodeAPI = {
     ipcRenderer.invoke(IPC.QUESTION_REPLY, requestID, answers),
   questionReject: (requestID: string) => ipcRenderer.invoke(IPC.QUESTION_REJECT, requestID),
   commandList: (directory?: string) => ipcRenderer.invoke(IPC.COMMAND_LIST, directory),
-  sessionCommand: (params: {
-    sessionId: string;
-    command: string;
-    arguments?: string;
-  }) => ipcRenderer.invoke(IPC.SESSION_COMMAND, params),
+  sessionCommand: (params: { sessionId: string; command: string; arguments?: string }) =>
+    ipcRenderer.invoke(IPC.SESSION_COMMAND, params),
   configGet: () => ipcRenderer.invoke(IPC.CONFIG_GET),
   configProviders: () => ipcRenderer.invoke(IPC.CONFIG_PROVIDERS),
   onEvent: (callback: (event: unknown) => void) => {

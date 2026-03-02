@@ -120,21 +120,22 @@ export async function startOpenCode(
 /**
  * 断开连接并关闭服务
  */
-export function disconnectOpenCode(): void {
+export async function disconnectOpenCode(): Promise<void> {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
   reconnectAttempt = 0;
-  if (eventAbortController) {
-    eventAbortController.abort();
-    eventAbortController = null;
-  }
+
+  eventAbortController?.abort();
+  eventAbortController = null;
   eventCallbacks.clear();
   client = null;
+
   if (server) {
-    server.close();
+    const s = server;
     server = null;
+    await s.close();
   }
 }
 

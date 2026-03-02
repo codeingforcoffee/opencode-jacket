@@ -4,8 +4,6 @@ interface OpenCodeAPI {
   connect: (options?: {
     hostname?: string;
     port?: number;
-    baseUrl?: string;
-    clientOnly?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   disconnect: () => Promise<{ success: boolean }>;
   health: () => Promise<{ healthy: boolean; version?: string }>;

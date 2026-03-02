@@ -96,25 +96,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-
-interface QuestionOption {
-  label: string;
-  description: string;
-}
-
-interface QuestionInfo {
-  question: string;
-  header: string;
-  options: QuestionOption[];
-  multiple?: boolean;
-  custom?: boolean;
-}
-
-interface QuestionRequest {
-  requestID: string;
-  sessionID?: string;
-  questions: QuestionInfo[];
-}
+import type { QuestionRequest, QuestionInfo } from '@renderer/types';
 
 const props = defineProps<{
   request: QuestionRequest | null;

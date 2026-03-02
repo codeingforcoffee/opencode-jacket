@@ -4,6 +4,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { parse } from 'jsonc-parser';
 
 export interface McpItem {
@@ -14,9 +15,7 @@ export interface McpItem {
 }
 
 function globalOpenCodeConfigPath(): string {
-  // __dirname 在编译后为 out/main，需回退到项目根目录
-  const projectRoot = join(__dirname, '..', '..');
-  const base = join(projectRoot, '.config', 'opencode');
+  const base = join(homedir(), '.config', 'opencode');
   const jsonc = join(base, 'opencode.jsonc');
   const json = join(base, 'opencode.json');
   if (existsSync(jsonc)) return jsonc;

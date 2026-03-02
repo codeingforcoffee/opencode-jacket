@@ -56,13 +56,7 @@
 </template>
 
 <script setup lang="ts">
-interface PermissionRequest {
-  requestID: string;
-  tool?: string;
-  filename?: string;
-  reason?: string;
-  sessionID?: string;
-}
+import type { PermissionRequest } from '@renderer/types';
 
 const props = defineProps<{
   request: PermissionRequest | null;

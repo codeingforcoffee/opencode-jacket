@@ -260,7 +260,10 @@ const commandSuggestions = computed(() => {
 });
 
 const showCommandMenu = computed(
-  () => commandQuery.value !== null && commandSuggestions.value.length > 0 && !commandMenuDismissed.value
+  () =>
+    commandQuery.value !== null &&
+    commandSuggestions.value.length > 0 &&
+    !commandMenuDismissed.value
 );
 
 async function fetchCommands() {
@@ -353,9 +356,7 @@ let unsubEvent: (() => void) | null = null;
 // rAF 批处理：合并流式 chunk 更新，减少 Vue 重渲染
 let chunkBuffer = '';
 let rafScheduled = false;
-const DEBUG_CHUNK = true; // 排查用
 function scheduleStreamingUpdate(text: string) {
-  if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel 收到 chunk, len=', text.length, 'sending=', sending.value);
   chunkBuffer += text;
   if (rafScheduled) return;
   rafScheduled = true;
@@ -363,7 +364,6 @@ function scheduleStreamingUpdate(text: string) {
     rafScheduled = false;
     if (chunkBuffer) {
       streamingText.value += chunkBuffer;
-      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel rAF 应用, 追加 len=', chunkBuffer.length);
       chunkBuffer = '';
     }
   });
@@ -470,13 +470,11 @@ async function sendMessage() {
     const commandName = spaceIdx > 0 ? text.slice(1, spaceIdx) : text.slice(1);
     const args = spaceIdx > 0 ? text.slice(spaceIdx + 1).trim() : undefined;
     try {
-      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel command 发送, command=', commandName);
       const res = await window.opencode.sessionCommand({
         sessionId,
         command: commandName,
         arguments: args,
       });
-      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel command 返回, error=', res.error);
       if (res.error) {
         messages.value.push({ role: 'assistant', content: `错误: ${res.error}` });
         clearChunkBuffer();
@@ -504,12 +502,10 @@ async function sendMessage() {
   }
 
   try {
-    if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel prompt 发送, sessionId=', sessionId);
     const res = await window.opencode.prompt({
       sessionId,
       parts,
     });
-    if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel prompt 返回, error=', res.error);
     if (res.error) {
       messages.value.push({ role: 'assistant', content: `错误: ${res.error}` });
       clearChunkBuffer();
@@ -548,9 +544,9 @@ onMounted(() => {
       const sid = ev?.properties?.sessionID ?? '';
       if (sid !== sessionStore.currentSessionId) return;
       const isIdle =
-        ev?.type === 'session.idle' || (ev?.type === 'session.status' && ev?.properties?.status === 'idle');
+        ev?.type === 'session.idle' ||
+        (ev?.type === 'session.status' && ev?.properties?.status === 'idle');
       if (isIdle) {
-        if (DEBUG_CHUNK) console.log('[opencode-debug] session 空闲，结束流式');
         finishStreaming();
       }
     });

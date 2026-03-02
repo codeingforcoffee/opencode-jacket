@@ -44,34 +44,15 @@ import { useI18n } from 'vue-i18n';
 import { useConnectionStore } from '@renderer/stores/connection';
 import { useSessionStore } from '@renderer/stores/session';
 import { useThemeStore } from '@renderer/stores/theme';
-import Sidebar from '@renderer/components/Sidebar.vue';
-import PermissionDialog from '@renderer/components/PermissionDialog.vue';
-import QuestionDialog from '@renderer/components/QuestionDialog.vue';
-
-interface PermissionRequest {
-  requestID: string;
-  tool?: string;
-  filename?: string;
-  reason?: string;
-  sessionID?: string;
-}
+import Sidebar from '@renderer/components/layout/Sidebar.vue';
+import PermissionDialog from '@renderer/components/dialog/PermissionDialog.vue';
+import QuestionDialog from '@renderer/components/dialog/QuestionDialog.vue';
+import type { PermissionRequest, QuestionRequest } from '@renderer/types';
 
 const { locale } = useI18n();
 const connectionStore = useConnectionStore();
 const sessionStore = useSessionStore();
 const themeStore = useThemeStore();
-
-interface QuestionRequest {
-  requestID: string;
-  sessionID?: string;
-  questions: Array<{
-    question: string;
-    header: string;
-    options: Array<{ label: string; description: string }>;
-    multiple?: boolean;
-    custom?: boolean;
-  }>;
-}
 
 const initDone = ref(false);
 const initPercent = ref(0);

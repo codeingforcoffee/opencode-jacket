@@ -14,37 +14,38 @@ Guidelines:
 - When a prerequisite is missing, surface the **exact failing check** and a concrete next step.
 
 ## opencode primitives
-how to pick the right extension abstraction for 
+
+how to pick the right extension abstraction for
 @opencode
 
 opencode has a lot of extensibility options:
 mcp / plugins / skills / bash / agents / commands
 
 - mcp
-use when you need authenticated third-party flows (oauth) and want to expose that safely to end users
-good fit when "auth + capability surface" is the product boundary
-downside: you're limited to whatever surface area the server exposes
+  use when you need authenticated third-party flows (oauth) and want to expose that safely to end users
+  good fit when "auth + capability surface" is the product boundary
+  downside: you're limited to whatever surface area the server exposes
 
 - bash / raw cli
-use only for the most advanced users or internal power workflows
-highest risk, easiest to get out of hand (context creep + permission creep + footguns)
-great for power users and prototyping, terrifying as a default for non-tech users
+  use only for the most advanced users or internal power workflows
+  highest risk, easiest to get out of hand (context creep + permission creep + footguns)
+  great for power users and prototyping, terrifying as a default for non-tech users
 
 - plugins
-use when you need real tools in code and want to scope permissions around them
-good middle ground: safer than raw cli, more flexible than mcp, reusable and testable
-basically "guardrails + capability packaging"
+  use when you need real tools in code and want to scope permissions around them
+  good middle ground: safer than raw cli, more flexible than mcp, reusable and testable
+  basically "guardrails + capability packaging"
 
 - skills
-use when you want reliable plain-english patterns that shape behavior
-best for repeatability and making workflows legible
-pro tip: pair skills with plugins or cli (i literally embed skills inside plugins right now and expose commands like get_skills / retrieve)
+  use when you want reliable plain-english patterns that shape behavior
+  best for repeatability and making workflows legible
+  pro tip: pair skills with plugins or cli (i literally embed skills inside plugins right now and expose commands like get_skills / retrieve)
 
 - agents
-use when you need to create tasks that are executed by different models than the main one and might have some extra context to find skills or interact with mcps.
+  use when you need to create tasks that are executed by different models than the main one and might have some extra context to find skills or interact with mcps.
 
-- commands 
-`/` commands that trigger tools
+- commands
+  `/` commands that trigger tools
 
 These are all opencode primitives you can read the docs to find out exactly how to set them up.
 
@@ -56,8 +57,8 @@ These are all opencode primitives you can read the docs to find out exactly how 
   - OpenCode Jacket can open a workpace.json and decide where to populate a folder with thse settings (not implemented today
 
 ## Core Architecture
- a running desktop OpenCode Jacket app acting as host
 
+a running desktop OpenCode Jacket app acting as host
 
 ### Mode A - Host (Desktop/Server)
 
@@ -79,14 +80,14 @@ OpenCode Jacket uses the official JavaScript/TypeScript SDK:
 Use `createOpencode()` to launch the OpenCode server and create a client.
 
 ```ts
-import { createOpencode } from "@opencode-ai/sdk/v2";
+import { createOpencode } from '@opencode-ai/sdk/v2';
 
 const opencode = await createOpencode({
-  hostname: "127.0.0.1",
+  hostname: '127.0.0.1',
   port: 4096,
   timeout: 5000,
   config: {
-    model: "anthropic/claude-3-5-sonnet-20241022",
+    model: 'anthropic/claude-3-5-sonnet-20241022',
   },
 });
 
