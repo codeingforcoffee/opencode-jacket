@@ -15,6 +15,7 @@ const opencodeAPI = {
   sessionDelete: (id: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_DELETE, id),
   sessionMessages: (sessionId: string) =>
     ipcRenderer.invoke(IPC.OPENCODE_SESSION_MESSAGES, sessionId),
+  sessionSummarize: (sessionId: string) => ipcRenderer.invoke(IPC.SESSION_SUMMARIZE, sessionId),
   mcpList: () => ipcRenderer.invoke(IPC.MCP_LIST),
   mcpAdd: (name: string, config: Record<string, unknown>) =>
     ipcRenderer.invoke(IPC.MCP_ADD, name, config),
@@ -35,7 +36,22 @@ const opencodeAPI = {
   }) => ipcRenderer.invoke(IPC.OPENCODE_FIND_FILES, params),
   projectCurrent: (directory?: string) =>
     ipcRenderer.invoke(IPC.OPENCODE_PROJECT_CURRENT, directory),
+  projectList: (directory?: string) => ipcRenderer.invoke(IPC.PROJECT_LIST, directory),
+  pathGet: (directory?: string) => ipcRenderer.invoke(IPC.PATH_GET, directory),
   filePickAndRead: () => ipcRenderer.invoke(IPC.FILE_PICK_AND_READ),
+  permissionReply: (requestID: string, reply: 'once' | 'always' | 'reject') =>
+    ipcRenderer.invoke(IPC.PERMISSION_REPLY, requestID, reply),
+  questionReply: (requestID: string, answers: string[][]) =>
+    ipcRenderer.invoke(IPC.QUESTION_REPLY, requestID, answers),
+  questionReject: (requestID: string) => ipcRenderer.invoke(IPC.QUESTION_REJECT, requestID),
+  commandList: (directory?: string) => ipcRenderer.invoke(IPC.COMMAND_LIST, directory),
+  sessionCommand: (params: {
+    sessionId: string;
+    command: string;
+    arguments?: string;
+  }) => ipcRenderer.invoke(IPC.SESSION_COMMAND, params),
+  configGet: () => ipcRenderer.invoke(IPC.CONFIG_GET),
+  configProviders: () => ipcRenderer.invoke(IPC.CONFIG_PROVIDERS),
   onEvent: (callback: (event: unknown) => void) => {
     const fn = (_: unknown, event: unknown) => callback(event);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_EVENT, fn);
@@ -50,6 +66,45 @@ const opencodeAPI = {
     const fn = (_: unknown, status: { connected: boolean }) => callback(status);
     ipcRenderer.on(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, fn);
+  },
+  onPermission: (
+    callback: (request: {
+      requestID: string;
+      tool?: string;
+      filename?: string;
+      reason?: string;
+      sessionID?: string;
+    }) => void
+  ) => {
+    const fn = (
+      _: unknown,
+      request: {
+        requestID: string;
+        tool?: string;
+        filename?: string;
+        reason?: string;
+        sessionID?: string;
+      }
+    ) => callback(request);
+    ipcRenderer.on(IPC_EVENTS.OPENCODE_PERMISSION, fn);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_PERMISSION, fn);
+  },
+  onQuestion: (
+    callback: (request: {
+      requestID: string;
+      sessionID?: string;
+      questions: Array<{
+        question: string;
+        header: string;
+        options: Array<{ label: string; description: string }>;
+        multiple?: boolean;
+        custom?: boolean;
+      }>;
+    }) => void
+  ) => {
+    const fn = (_: unknown, request: Parameters<typeof callback>[0]) => callback(request);
+    ipcRenderer.on(IPC_EVENTS.OPENCODE_QUESTION, fn);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.OPENCODE_QUESTION, fn);
   },
   initGetStatus: () => ipcRenderer.invoke(IPC.INIT_GET_STATUS),
   onInitProgress: (callback: (payload: { percent: number; message: string }) => void) => {

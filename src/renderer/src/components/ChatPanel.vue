@@ -110,7 +110,34 @@
 
       <!-- 输入区域 -->
       <div class="shrink-0 px-6 pb-6 pt-4">
-        <div class="max-w-3xl mx-auto">
+        <div class="max-w-3xl mx-auto relative">
+          <!-- 斜杠命令菜单 -->
+          <div
+            v-if="showCommandMenu"
+            class="absolute bottom-full mb-2 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden z-50 max-h-52 overflow-y-auto"
+          >
+            <div
+              v-for="(cmd, idx) in commandSuggestions"
+              :key="cmd.name"
+              class="flex items-start gap-3 px-4 py-2.5 cursor-pointer transition-colors"
+              :class="
+                selectedCommandIdx === idx
+                  ? 'bg-primary-50 dark:bg-primary-900/30'
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'
+              "
+              @mousedown.prevent="selectCommand(cmd)"
+            >
+              <span class="font-mono text-sm text-primary-600 dark:text-primary-400 shrink-0"
+                >/{{ cmd.name }}</span
+              >
+              <span class="text-sm text-gray-500 dark:text-gray-400 truncate">{{
+                cmd.description
+              }}</span>
+            </div>
+            <div v-if="commandSuggestions.length === 0" class="px-4 py-3 text-sm text-gray-400">
+              无匹配命令
+            </div>
+          </div>
           <div
             class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 shadow-sm overflow-hidden transition-all focus-within:border-primary-400 dark:focus-within:border-primary-500 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary-500/20"
           >
@@ -149,6 +176,10 @@
                 :rows="2"
                 :disabled="!connectionStore.connected || !sessionStore.currentSessionId"
                 @keydown.enter.exact="onEnterKeydown"
+                @keydown.up.prevent="navigateCommands(-1)"
+                @keydown.down.prevent="navigateCommands(1)"
+                @keydown.esc="dismissCommandMenu"
+                @keydown.tab.prevent="onTabCommand"
               />
               <ElButton
                 v-if="!sending"
@@ -182,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import {
   DocumentCopy,
   DocumentAdd,
@@ -205,6 +236,82 @@ const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
 const inputText = ref('');
 const streamingText = ref('');
 const sending = ref(false);
+
+/** 斜杠命令 */
+type OcCommand = { name: string; description?: string; source?: string; hints: string[] };
+const allCommands = ref<OcCommand[]>([]);
+const selectedCommandIdx = ref(0);
+const commandMenuDismissed = ref(false);
+let commandsFetched = false;
+
+const commandQuery = computed(() => {
+  if (!inputText.value.startsWith('/')) return null;
+  const afterSlash = inputText.value.slice(1);
+  const spaceIdx = afterSlash.indexOf(' ');
+  return spaceIdx >= 0 ? null : afterSlash; // null hides menu once arguments are being typed
+});
+
+const commandSuggestions = computed(() => {
+  const query = commandQuery.value;
+  if (query === null) return [];
+  return allCommands.value.filter(
+    (cmd) => query === '' || cmd.name.toLowerCase().includes(query.toLowerCase())
+  );
+});
+
+const showCommandMenu = computed(
+  () => commandQuery.value !== null && commandSuggestions.value.length > 0 && !commandMenuDismissed.value
+);
+
+async function fetchCommands() {
+  if (commandsFetched || typeof window.opencode === 'undefined') return;
+  commandsFetched = true;
+  try {
+    const res = await window.opencode.commandList();
+    if (!res.error && Array.isArray(res.data)) {
+      allCommands.value = res.data as OcCommand[];
+    }
+  } catch {
+    // 忽略命令列表加载失败
+  }
+}
+
+function selectCommand(cmd: OcCommand) {
+  inputText.value = `/${cmd.name} `;
+  commandMenuDismissed.value = false;
+}
+
+function navigateCommands(delta: number) {
+  if (!showCommandMenu.value) return;
+  const len = commandSuggestions.value.length;
+  selectedCommandIdx.value = (selectedCommandIdx.value + delta + len) % len;
+}
+
+function dismissCommandMenu() {
+  commandMenuDismissed.value = true;
+}
+
+function onTabCommand() {
+  if (!showCommandMenu.value) return;
+  const cmd = commandSuggestions.value[selectedCommandIdx.value];
+  if (cmd) selectCommand(cmd);
+}
+
+watch(inputText, (val) => {
+  // 重置状态：离开斜杠模式
+  if (!val.startsWith('/')) {
+    commandMenuDismissed.value = false;
+    commandsFetched = false;
+    selectedCommandIdx.value = 0;
+    return;
+  }
+  // 进入斜杠模式：延迟加载命令列表
+  if (commandQuery.value !== null) {
+    commandMenuDismissed.value = false;
+    selectedCommandIdx.value = 0;
+    fetchCommands();
+  }
+});
 
 /** 附件：{ name, content } */
 const attachments = ref<Array<{ name: string; content: string }>>([]);
@@ -229,6 +336,14 @@ function removeAttachment(idx: number) {
 function onEnterKeydown(e: KeyboardEvent) {
   if (e.isComposing) return;
   e.preventDefault();
+  // 命令菜单打开时 Enter 选中高亮命令
+  if (showCommandMenu.value) {
+    const cmd = commandSuggestions.value[selectedCommandIdx.value];
+    if (cmd) {
+      selectCommand(cmd);
+      return;
+    }
+  }
   sendMessage();
 }
 
@@ -274,16 +389,18 @@ async function loadMessages(sessionId: string) {
     messages.value = [];
     return;
   }
-  messages.value = raw.map((item) => {
-    const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
-    const textParts =
-      item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'text') ?? [];
-    let content = textParts.map((p) => p.text ?? '').join('');
-    if (role === 'user') {
-      content = content.replace(/---\s*\n\s*\[文件: ([^\]]+)\]\s*\n[\s\S]*?\n---/g, '[附件: $1]');
-    }
-    return { role, content };
-  });
+  messages.value = raw
+    .map((item) => {
+      const role = (item.info?.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant';
+      const textParts =
+        item.parts?.filter((p): p is { type: string; text?: string } => p?.type === 'text') ?? [];
+      let content = textParts.map((p) => p.text ?? '').join('');
+      if (role === 'user') {
+        content = content.replace(/---\s*\n\s*\[文件: ([^\]]+)\]\s*\n[\s\S]*?\n---/g, '[附件: $1]');
+      }
+      return { role, content };
+    })
+    .filter((msg) => msg.content !== '');
 }
 
 watch(
@@ -317,12 +434,9 @@ async function abortSession() {
     if (res.error) {
       ElMessage.error(res.error);
     } else {
-      const currentStreaming = streamingText.value;
-      streamingText.value = '';
       sending.value = false;
-      if (currentStreaming) {
-        messages.value.push({ role: 'assistant', content: currentStreaming });
-      }
+      streamingText.value = '';
+      await loadMessages(sessionId);
     }
   } catch (err) {
     ElMessage.error((err as Error).message);
@@ -338,6 +452,7 @@ async function sendMessage() {
   if (!sessionId || typeof window.opencode === 'undefined') return;
   if (!text && !atts.length) return;
 
+  commandMenuDismissed.value = true;
   inputText.value = '';
   attachments.value = [];
 
@@ -348,6 +463,34 @@ async function sendMessage() {
   messages.value.push({ role: 'user', content: displayContent });
   streamingText.value = '';
   sending.value = true;
+
+  // 检测斜杠命令（无附件时生效）
+  if (text.startsWith('/') && !atts.length) {
+    const spaceIdx = text.indexOf(' ');
+    const commandName = spaceIdx > 0 ? text.slice(1, spaceIdx) : text.slice(1);
+    const args = spaceIdx > 0 ? text.slice(spaceIdx + 1).trim() : undefined;
+    try {
+      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel command 发送, command=', commandName);
+      const res = await window.opencode.sessionCommand({
+        sessionId,
+        command: commandName,
+        arguments: args,
+      });
+      if (DEBUG_CHUNK) console.log('[opencode-debug] ChatPanel command 返回, error=', res.error);
+      if (res.error) {
+        messages.value.push({ role: 'assistant', content: `错误: ${res.error}` });
+        clearChunkBuffer();
+        streamingText.value = '';
+        sending.value = false;
+      }
+    } catch (err) {
+      ElMessage.error((err as Error).message);
+      clearChunkBuffer();
+      streamingText.value = '';
+      sending.value = false;
+    }
+    return;
+  }
 
   const parts: Array<{ type: string; text?: string }> = [];
   for (const a of atts) {
@@ -382,13 +525,14 @@ async function sendMessage() {
   }
 }
 
-function finishStreaming() {
-  if (streamingText.value) {
-    messages.value.push({ role: 'assistant', content: streamingText.value });
-  }
+async function finishStreaming() {
+  const sessionId = sessionStore.currentSessionId;
   clearChunkBuffer();
-  streamingText.value = '';
   sending.value = false;
+  if (sessionId) {
+    await loadMessages(sessionId);
+  }
+  streamingText.value = '';
 }
 
 onMounted(() => {

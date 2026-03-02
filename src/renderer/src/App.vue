@@ -27,6 +27,12 @@
         </router-view>
       </main>
     </div>
+
+    <!-- 权限请求对话框 -->
+    <PermissionDialog :request="pendingPermission" @replied="onPermissionReplied" />
+
+    <!-- Question 工具对话框 -->
+    <QuestionDialog :request="pendingQuestion" @done="pendingQuestion = null" />
   </ElConfigProvider>
 </template>
 
@@ -39,19 +45,49 @@ import { useConnectionStore } from '@renderer/stores/connection';
 import { useSessionStore } from '@renderer/stores/session';
 import { useThemeStore } from '@renderer/stores/theme';
 import Sidebar from '@renderer/components/Sidebar.vue';
+import PermissionDialog from '@renderer/components/PermissionDialog.vue';
+import QuestionDialog from '@renderer/components/QuestionDialog.vue';
+
+interface PermissionRequest {
+  requestID: string;
+  tool?: string;
+  filename?: string;
+  reason?: string;
+  sessionID?: string;
+}
 
 const { locale } = useI18n();
 const connectionStore = useConnectionStore();
 const sessionStore = useSessionStore();
 const themeStore = useThemeStore();
 
+interface QuestionRequest {
+  requestID: string;
+  sessionID?: string;
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description: string }>;
+    multiple?: boolean;
+    custom?: boolean;
+  }>;
+}
+
 const initDone = ref(false);
 const initPercent = ref(0);
 const initMessage = ref('检查中...');
+const pendingPermission = ref<PermissionRequest | null>(null);
+const pendingQuestion = ref<QuestionRequest | null>(null);
 
 let unsubConnection: (() => void) | null = null;
 let unsubInitProgress: (() => void) | null = null;
 let unsubInitDone: (() => void) | null = null;
+let unsubPermission: (() => void) | null = null;
+let unsubQuestion: (() => void) | null = null;
+
+function onPermissionReplied(_requestID: string, _reply: 'once' | 'always' | 'reject'): void {
+  pendingPermission.value = null;
+}
 
 onMounted(() => {
   if (typeof window.opencode !== 'undefined') {
@@ -70,6 +106,16 @@ onMounted(() => {
     });
     unsubInitDone = window.opencode.onInitDone(() => {
       initDone.value = true;
+    });
+
+    // 订阅权限请求
+    unsubPermission = window.opencode.onPermission((request) => {
+      pendingPermission.value = request;
+    });
+
+    // 订阅 Question 工具提问
+    unsubQuestion = window.opencode.onQuestion((request) => {
+      pendingQuestion.value = request;
     });
   } else {
     initDone.value = true;
@@ -101,5 +147,7 @@ onUnmounted(() => {
   unsubConnection?.();
   unsubInitProgress?.();
   unsubInitDone?.();
+  unsubPermission?.();
+  unsubQuestion?.();
 });
 </script>

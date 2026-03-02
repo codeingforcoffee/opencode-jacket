@@ -1,21 +1,23 @@
 /**
- * OpenCode SDK 封装 - 连接本地已运行的 OpenCode 服务
+ * OpenCode SDK 封装 - 启动 OpenCode 服务并建立客户端连接
  */
-import { createOpencodeClient } from '@opencode-ai/sdk/v2';
+import { createOpencode } from '@opencode-ai/sdk/v2';
 
-export type OpenCodeClient = Awaited<ReturnType<typeof createOpencodeClient>>;
+export type OpenCodeClient = Awaited<ReturnType<typeof createOpencode>>['client'];
+export type OpenCodeServer = Awaited<ReturnType<typeof createOpencode>>['server'];
 
-export interface OpenCodeConnectionOptions {
+export interface OpenCodeStartOptions {
   hostname?: string;
   port?: number;
+  timeout?: number;
 }
 
 let client: OpenCodeClient | null = null;
+let server: OpenCodeServer | null = null;
 let eventAbortController: AbortController | null = null;
 let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 const MAX_RECONNECT_ATTEMPTS = 10;
-const DEBUG = true; // 排查用，可改为 false 关闭
 
 export type EventCallback = (event: unknown) => void;
 
@@ -29,28 +31,17 @@ async function startEventSubscription(): Promise<void> {
   const controller = eventAbortController;
 
   try {
-    if (DEBUG) console.log('[opencode-debug] event.subscribe() 开始');
     const events = await c.event.subscribe();
     reconnectAttempt = 0;
 
     if (!events?.stream) {
-      if (DEBUG) console.warn('[opencode-debug] events.stream 为空');
       return;
     }
-    if (DEBUG) console.log('[opencode-debug] event stream 已连接');
 
-    let eventCount = 0;
     for await (const event of events.stream) {
       if (controller.signal.aborted) break;
-      eventCount++;
-      if (DEBUG && eventCount <= 3) {
-        const ev = event as { type?: string };
-        console.log('[opencode-debug] 收到事件 #' + eventCount, ev?.type ?? '(无type)');
-      }
       eventCallbacks.forEach((cb) => cb(event));
     }
-
-    if (DEBUG) console.log('[opencode-debug] stream 结束, 共', eventCount, '个事件');
 
     // 流正常结束，尝试重连
     if (!controller.signal.aborted && client) {
@@ -92,32 +83,42 @@ function scheduleReconnect(): void {
 }
 
 /**
- * 连接本地已运行的 OpenCode 服务
+ * 启动 OpenCode 服务并建立连接
  */
-export async function connectOpenCode(
-  options: OpenCodeConnectionOptions = {}
+export async function startOpenCode(
+  options: OpenCodeStartOptions = {},
+  onProgress?: (percent: number, message: string) => void
 ): Promise<OpenCodeClient> {
   if (client) {
     return client;
   }
 
-  const hostname = options.hostname ?? '127.0.0.1';
-  const port = options.port ?? 4096;
-  const baseUrl = `http://${hostname}:${port}`;
+  onProgress?.(10, '启动 OpenCode 服务...');
 
-  client = createOpencodeClient({ baseUrl });
+  const result = await createOpencode({
+    hostname: options.hostname ?? '127.0.0.1',
+    port: options.port ?? 4096,
+    timeout: options.timeout ?? 30000,
+  });
+
+  client = result.client;
+  server = result.server;
+
+  onProgress?.(80, '连接已建立，订阅事件流...');
 
   try {
-    await startEventSubscription();
+    void startEventSubscription();
   } catch (err) {
     console.warn('[opencode-client] Event subscribe failed:', err);
   }
+
+  onProgress?.(100, '完成');
 
   return client;
 }
 
 /**
- * 断开连接
+ * 断开连接并关闭服务
  */
 export function disconnectOpenCode(): void {
   if (reconnectTimer) {
@@ -131,10 +132,14 @@ export function disconnectOpenCode(): void {
   }
   eventCallbacks.clear();
   client = null;
+  if (server) {
+    server.close();
+    server = null;
+  }
 }
 
 /**
- * 获取当前客户端（需先 connect）
+ * 获取当前客户端（需先 startOpenCode）
  */
 export function getOpenCodeClient(): OpenCodeClient | null {
   return client;
@@ -169,4 +174,16 @@ export async function healthCheck(): Promise<{
   } catch {
     return { healthy: false };
   }
+}
+
+/**
+ * 回复权限请求
+ */
+export async function permissionReply(
+  requestID: string,
+  reply: 'once' | 'always' | 'reject'
+): Promise<void> {
+  const c = getOpenCodeClient();
+  if (!c) throw new Error('Not connected');
+  await c.permission.reply({ requestID, reply });
 }

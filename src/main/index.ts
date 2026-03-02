@@ -5,13 +5,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { IPC, IPC_EVENTS } from '@shared';
 import { addMcp, listMcp, removeMcp } from './mcp';
 import {
-  connectOpenCode,
+  startOpenCode,
   disconnectOpenCode,
   getOpenCodeClient,
   healthCheck,
   subscribeEvents,
+  permissionReply,
 } from './opencode-client';
-import { ensureOpencodeReady } from './opencode-init';
 import { initChunkBuffer, pushChunk, flushChunkBuffer } from './utils/chunk-buffer';
 import { withTimeout } from './utils/with-timeout';
 
@@ -56,25 +56,18 @@ function sendToRenderer(channel: string, ...args: unknown[]): void {
 }
 
 function runOpencodeInit(): void {
-  ensureOpencodeReady((percent, message) => {
+  startOpenCode({ hostname: '127.0.0.1', port: 4096 }, (percent, message) => {
     initStatus = { done: false, percent, message };
     sendToRenderer(IPC_EVENTS.INIT_PROGRESS, { percent, message });
   })
     .then(() => {
       initStatus = { done: true, percent: 100, message: '完成' };
       sendToRenderer(IPC_EVENTS.INIT_DONE);
-      connectOpenCode({ hostname: '127.0.0.1', port: 4096 })
-        .then(() => {
-          sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: true });
-        })
-        .catch((err) => {
-          console.error('[main] OpenCode 自动连接失败:', (err as Error).message);
-          sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
-        });
+      sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: true });
     })
     .catch((err) => {
-      console.error('[main] OpenCode 初始化失败:', (err as Error).message);
-      initStatus = { done: true, percent: 100, message: '初始化失败' };
+      console.error('[main] OpenCode 启动失败:', (err as Error).message);
+      initStatus = { done: true, percent: 100, message: '启动失败' };
       sendToRenderer(IPC_EVENTS.INIT_DONE);
       sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: false });
     });
@@ -83,12 +76,12 @@ function runOpencodeInit(): void {
 function registerOpenCodeIPC(): void {
   ipcMain.handle(IPC.INIT_GET_STATUS, () => Promise.resolve(initStatus));
 
-  // 连接 OpenCode
+  // 手动连接（兼容渲染进程调用；服务已在 init 时启动，直接返回状态）
   ipcMain.handle(
     IPC.OPENCODE_CONNECT,
     async (_, options?: { hostname?: string; port?: number }) => {
       try {
-        await connectOpenCode(options ?? {});
+        await startOpenCode(options ?? {});
         sendToRenderer(IPC_EVENTS.OPENCODE_CONNECTION_STATUS, { connected: true });
         return { success: true };
       } catch (err) {
@@ -98,6 +91,11 @@ function registerOpenCodeIPC(): void {
     }
   );
 
+  // 健康检查
+  ipcMain.handle(IPC.OPENCODE_HEALTH, async () => {
+    return withTimeout(healthCheck(), 3000, 'health');
+  });
+
   // 断开连接
   ipcMain.handle(IPC.OPENCODE_DISCONNECT, () => {
     flushChunkBuffer();
@@ -106,9 +104,68 @@ function registerOpenCodeIPC(): void {
     return { success: true };
   });
 
-  // 健康检查
-  ipcMain.handle(IPC.OPENCODE_HEALTH, async () => {
-    return withTimeout(healthCheck(), 3000, 'health');
+  // 权限回复
+  ipcMain.handle(
+    IPC.PERMISSION_REPLY,
+    async (_, requestID: string, reply: 'once' | 'always' | 'reject') => {
+      try {
+        await permissionReply(requestID, reply);
+        return { success: true };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // Question 工具 - 回复
+  ipcMain.handle(
+    IPC.QUESTION_REPLY,
+    async (_, requestID: string, answers: string[][]) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      try {
+        await c.question.reply({ requestID, answers });
+        return { success: true };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
+  // Question 工具 - 拒绝
+  ipcMain.handle(IPC.QUESTION_REJECT, async (_, requestID: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      await c.question.reject({ requestID });
+      return { success: true };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 配置获取
+  ipcMain.handle(IPC.CONFIG_GET, async () => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.config.get();
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 配置提供商列表
+  ipcMain.handle(IPC.CONFIG_PROVIDERS, async () => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.config.providers();
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
   });
 
   // 创建会话（v2 扁平化 API）
@@ -196,6 +253,18 @@ function registerOpenCodeIPC(): void {
     }
   });
 
+  // 会话摘要
+  ipcMain.handle(IPC.SESSION_SUMMARIZE, async (_, sessionId: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.session.summarize({ sessionID: sessionId });
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
   // 停止会话（Chat）
   ipcMain.handle(IPC.OPENCODE_SESSION_ABORT, async (_, sessionId: string) => {
     const c = getOpenCodeClient();
@@ -248,20 +317,38 @@ function registerOpenCodeIPC(): void {
     }
   });
 
-  // MCP 添加
+  // MCP 添加（添加后重新加载配置）
   ipcMain.handle(IPC.MCP_ADD, async (_, name: string, config: Record<string, unknown>) => {
     try {
       const result = await addMcp(name, config);
+      // 触发引擎配置重载
+      const c = getOpenCodeClient();
+      if (c) {
+        try {
+          await c.config.get();
+        } catch {
+          // 忽略重载错误
+        }
+      }
       return { data: result };
     } catch (err) {
       return { error: (err as Error).message };
     }
   });
 
-  // MCP 删除
+  // MCP 删除（删除后重新加载配置）
   ipcMain.handle(IPC.MCP_REMOVE, async (_, name: string) => {
     try {
       const ok = await removeMcp(name);
+      // 触发引擎配置重载
+      const c = getOpenCodeClient();
+      if (c) {
+        try {
+          await c.config.get();
+        } catch {
+          // 忽略重载错误
+        }
+      }
       return { success: ok };
     } catch (err) {
       return { error: (err as Error).message };
@@ -323,6 +410,68 @@ function registerOpenCodeIPC(): void {
     }
   });
 
+  // 项目列表
+  ipcMain.handle(IPC.PROJECT_LIST, async (_, directory?: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.project.list({ directory });
+      return { data: res?.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 路径获取
+  ipcMain.handle(IPC.PATH_GET, async (_, directory?: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.path.get({ directory });
+      return { data: res?.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 列出可用命令
+  ipcMain.handle(IPC.COMMAND_LIST, async (_, directory?: string) => {
+    const c = getOpenCodeClient();
+    if (!c) return { error: 'Not connected' };
+    try {
+      const res = await c.command.list({ directory });
+      return { data: res.data };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  });
+
+  // 执行会话命令（slash command）
+  ipcMain.handle(
+    IPC.SESSION_COMMAND,
+    async (
+      _,
+      params: {
+        sessionId: string;
+        command: string;
+        arguments?: string;
+      }
+    ) => {
+      const c = getOpenCodeClient();
+      if (!c) return { error: 'Not connected' };
+      try {
+        const res = await c.session.command({
+          sessionID: params.sessionId,
+          command: params.command,
+          arguments: params.arguments,
+        });
+        return { data: res.data };
+      } catch (err) {
+        return { error: (err as Error).message };
+      }
+    }
+  );
+
   // 本地文件选择并读取（Electron dialog + fs）
   ipcMain.handle(IPC.FILE_PICK_AND_READ, async () => {
     const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
@@ -367,16 +516,66 @@ app.whenReady().then(() => {
   });
 
   // 事件流转发到渲染进程
-  const DEBUG_EVENTS = true; // 排查用
   subscribeEvents((event) => {
     sendToRenderer(IPC_EVENTS.OPENCODE_EVENT, event);
+
     const ev = event as {
       type?: string;
       sessionID?: string;
-      properties?: { text?: string; delta?: string; sessionID?: string; part?: { type?: string; text?: string; sessionID?: string } };
+      properties?: {
+        text?: string;
+        delta?: string;
+        sessionID?: string;
+        part?: { type?: string; text?: string; sessionID?: string };
+        requestID?: string;
+        tool?: string;
+        filename?: string;
+        reason?: string;
+        // Question 工具字段
+        id?: string;
+        questions?: Array<{
+          question: string;
+          header: string;
+          options: Array<{ label: string; description: string }>;
+          multiple?: boolean;
+          custom?: boolean;
+        }>;
+      };
       part?: { text?: string; sessionID?: string; type?: string };
     };
-    const sessionId = ev?.sessionID ?? ev?.properties?.sessionID ?? ev?.properties?.part?.sessionID ?? ev?.part?.sessionID ?? '';
+
+    // 权限请求事件转发到渲染进程（SDK 事件类型为 permission.asked）
+    if (ev?.type === 'permission.asked') {
+      const props = ev.properties as {
+        id?: string;
+        sessionID?: string;
+        permission?: string;
+        patterns?: string[];
+      } | undefined;
+      console.log('[opencode] permission.asked id=', props?.id, 'permission=', props?.permission);
+      sendToRenderer(IPC_EVENTS.OPENCODE_PERMISSION, {
+        requestID: props?.id,
+        tool: props?.permission,
+        filename: props?.patterns?.[0],
+        sessionID: ev.sessionID ?? props?.sessionID,
+      });
+    }
+
+    // Question 工具提问事件转发到渲染进程
+    if (ev?.type === 'question.asked' && ev.properties?.id) {
+      sendToRenderer(IPC_EVENTS.OPENCODE_QUESTION, {
+        requestID: ev.properties.id,
+        sessionID: ev.sessionID ?? ev.properties.sessionID,
+        questions: ev.properties.questions ?? [],
+      });
+    }
+
+    const sessionId =
+      ev?.sessionID ??
+      ev?.properties?.sessionID ??
+      ev?.properties?.part?.sessionID ??
+      ev?.part?.sessionID ??
+      '';
     let text = '';
     if (ev?.properties?.text) {
       text = ev.properties.text;
@@ -395,10 +594,7 @@ app.whenReady().then(() => {
       text = ev.properties.delta;
     }
     if (text) {
-      if (DEBUG_EVENTS) console.log('[opencode-debug] 提取到 chunk, sessionId=', sessionId, 'len=', text.length);
       pushChunk(sessionId, text);
-    } else if (DEBUG_EVENTS && (ev?.type?.includes('part') || ev?.type?.includes('message'))) {
-      console.log('[opencode-debug] 未提取到文本, type=', ev?.type, 'ev=', JSON.stringify(ev).slice(0, 200));
     }
   });
 

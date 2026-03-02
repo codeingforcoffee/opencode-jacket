@@ -1,0 +1,4 @@
+export const COMMAND = {
+  COMMAND_LIST: 'MAIN_COMMAND__LIST',
+  SESSION_COMMAND: 'MAIN_SESSION__COMMAND',
+} as const;

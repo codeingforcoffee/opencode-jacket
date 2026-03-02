@@ -12,6 +12,9 @@ export { CHAT } from './chat';
 export { CONNECTION } from './connection';
 export { MCP } from './mcp';
 export { FILE } from './file';
+export { PERMISSION } from './permission';
+export { QUESTION } from './question';
+export { COMMAND } from './command';
 export { IPC_EVENTS } from './events';
 
 import { CONNECTION } from './connection';
@@ -19,6 +22,9 @@ import { SESSION } from './session';
 import { CHAT } from './chat';
 import { MCP } from './mcp';
 import { FILE } from './file';
+import { PERMISSION } from './permission';
+import { QUESTION } from './question';
+import { COMMAND } from './command';
 
 /** 主进程 handle（invoke 调用）- 扁平化导出，兼容现有用法 */
 export const IPC = {
@@ -27,4 +33,7 @@ export const IPC = {
   ...CHAT,
   ...MCP,
   ...FILE,
+  ...PERMISSION,
+  ...QUESTION,
+  ...COMMAND,
 } as const;

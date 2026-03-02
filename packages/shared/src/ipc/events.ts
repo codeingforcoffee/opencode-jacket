@@ -13,4 +13,8 @@ export const IPC_EVENTS = {
   INIT_PROGRESS: 'RENDERER_INIT_PROGRESS',
   // 初始化完成
   INIT_DONE: 'RENDERER_INIT_DONE',
+  // 权限请求（来自 OpenCode 服务端）
+  OPENCODE_PERMISSION: 'RENDERER_OPENCODE_PERMISSION',
+  // Question 工具提问（来自 OpenCode 服务端）
+  OPENCODE_QUESTION: 'RENDERER_OPENCODE_QUESTION',
 } as const;

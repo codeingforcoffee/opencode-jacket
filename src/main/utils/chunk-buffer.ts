@@ -2,7 +2,7 @@
  * Chunk 批处理 - 合并流式文本块，减少 IPC 调用与渲染压力
  */
 const CHUNK_FLUSH_INTERVAL_MS = 16;
-const DEBUG = true; // 排查用
+const DEBUG = false; // 排查用
 
 type FlushCallback = (sessionId: string, text: string) => void;
 
@@ -21,7 +21,13 @@ function flush(): void {
   for (const [sessionId, chunks] of buffer) {
     if (chunks.length > 0) {
       const joined = chunks.join('');
-      if (DEBUG) console.log('[opencode-debug] chunk-buffer flush, sessionId=', sessionId, 'len=', joined.length);
+      if (DEBUG)
+        console.log(
+          '[opencode-debug] chunk-buffer flush, sessionId=',
+          sessionId,
+          'len=',
+          joined.length
+        );
       sendToRenderer(sessionId, joined);
     }
   }

@@ -1,19 +1,17 @@
 {
-    "$schema": "https://opencode.ai/config.json",
-    "mcp": {
-        "web-search-prime": {
-            "type": "remote",
-            "url": "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp",
-            "headers": {
-                "Authorization": "Bearer your_token"
-            }
-        },
-        "web-reader": {
-            "type": "http",
-            "url": "https://open.bigmodel.cn/api/mcp/web_reader/mcp",
-            "headers": {
-                "Authorization": "Bearer your_token"
-            }
-        }
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
+    },
+    "dc": {
+      "type": "remote",
+      "url": "https://mcpmarket.cn/mcp/555e742c78bb678035ee1bc5"
     }
+  }
 }
