@@ -1,6 +1,5 @@
 /**
- * MCP 配置逻辑 - 参考 openwork packages/server/src/mcp.ts
- * 使用全局 opencode 配置 ~/.config/opencode/opencode.jsonc
+ * MCP 配置逻辑 - 仅使用全局配置 ~/.config/opencode/opencode.json
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,7 +19,7 @@ function globalOpenCodeConfigPath(): string {
   const json = join(base, 'opencode.json');
   if (existsSync(jsonc)) return jsonc;
   if (existsSync(json)) return json;
-  return jsonc;
+  return json;
 }
 
 function getMcpConfig(config: Record<string, unknown>): Record<string, Record<string, unknown>> {
@@ -83,19 +82,15 @@ function validateMcpConfig(config: Record<string, unknown>): void {
 
 export async function listMcp(): Promise<McpItem[]> {
   const path = globalOpenCodeConfigPath();
-  const { data: config } = readJsoncFile(path);
-  const mcpMap = getMcpConfig(config);
-  const items: McpItem[] = [];
-  for (const [name, entry] of Object.entries(mcpMap)) {
-    if (entry && typeof entry === 'object') {
-      items.push({
-        name,
-        config: entry as Record<string, unknown>,
-        source: 'config.global',
-      });
-    }
-  }
-  return items;
+  const { data } = readJsoncFile(path);
+  const mcpMap = getMcpConfig(data);
+  return Object.entries(mcpMap)
+    .filter(([, entry]) => entry && typeof entry === 'object')
+    .map(([name, entry]) => ({
+      name,
+      config: entry as Record<string, unknown>,
+      source: 'config.global' as const,
+    }));
 }
 
 export async function addMcp(
@@ -111,6 +106,17 @@ export async function addMcp(
   mcpMap[name] = config;
   updateJsoncTopLevel(path, { mcp: mcpMap });
   return { action: existed ? 'updated' : 'added' };
+}
+
+export async function toggleMcpEnabled(name: string, enabled: boolean): Promise<void> {
+  const path = globalOpenCodeConfigPath();
+  const { data } = readJsoncFile(path);
+  const mcpMap = getMcpConfig(data);
+  if (!Object.prototype.hasOwnProperty.call(mcpMap, name)) {
+    throw new Error(`MCP "${name}" 不存在`);
+  }
+  mcpMap[name] = { ...mcpMap[name], enabled };
+  updateJsoncTopLevel(path, { mcp: mcpMap });
 }
 
 export async function removeMcp(name: string): Promise<boolean> {

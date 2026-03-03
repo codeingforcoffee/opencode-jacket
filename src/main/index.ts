@@ -5,6 +5,7 @@ import { IPC_EVENTS } from '@shared';
 import { startOpenCode, disconnectOpenCode, subscribeEvents } from './opencode-client';
 import { initChunkBuffer, pushChunk, flushChunkBuffer } from './utils/chunk-buffer';
 import { registerAllIPC } from './ipc';
+import { initUiConsole, UiConsole } from './utils/debug-console';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -17,6 +18,9 @@ const initStatus: { done: boolean; percent?: number; message?: string } = {
 function sendToRenderer(channel: string, ...args: unknown[]): void {
   mainWindow?.webContents.send(channel, ...args);
 }
+
+// 绑定主进程 UiConsole，使其可以向渲染进程推送调试日志
+initUiConsole(sendToRenderer);
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -98,6 +102,10 @@ function setupEventForwarding(): void {
       };
       part?: { text?: string; sessionID?: string; type?: string };
     };
+    if (ev.type !== 'server.heartbeat') {
+      // 心跳检测不需要打日志
+      UiConsole.log('🍕🍕 ~ setupEventForwarding ~ ev:', ev);
+    }
 
     // 权限请求事件转发到渲染进程
     if (ev?.type === 'permission.asked') {
@@ -124,6 +132,19 @@ function setupEventForwarding(): void {
         sessionID: ev.sessionID ?? ev.properties.sessionID,
         questions: ev.properties.questions ?? [],
       });
+    }
+
+    // 工具调用参数日志
+    if (ev?.type === 'message.part.updated') {
+      const part = ev?.properties?.part as Record<string, unknown> | undefined;
+      if (part?.type === 'tool') {
+        const state = part.state as
+          | { status?: string; input?: Record<string, unknown> }
+          | undefined;
+        if (state?.input && Object.keys(state.input).length) {
+          console.log('[tool-call]', part.tool, JSON.stringify(state.input, null, 2));
+        }
+      }
     }
 
     // 提取流式文本 chunk

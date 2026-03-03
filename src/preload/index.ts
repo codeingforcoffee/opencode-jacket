@@ -19,6 +19,11 @@ const opencodeAPI = {
   mcpList: () => ipcRenderer.invoke(IPC.MCP_LIST),
   mcpAdd: (name: string, config: Record<string, unknown>) =>
     ipcRenderer.invoke(IPC.MCP_ADD, name, config),
+  mcpToggle: (name: string, enabled: boolean) => ipcRenderer.invoke(IPC.MCP_TOGGLE, name, enabled),
+  mcpStatus: () => ipcRenderer.invoke(IPC.MCP_STATUS),
+  mcpAuthStart: (name: string) => ipcRenderer.invoke(IPC.MCP_AUTH_START, name),
+  mcpAuthRemove: (name: string) => ipcRenderer.invoke(IPC.MCP_AUTH_REMOVE, name),
+  mcpReconnect: (name: string) => ipcRenderer.invoke(IPC.MCP_RECONNECT, name),
   mcpRemove: (name: string) => ipcRenderer.invoke(IPC.MCP_REMOVE, name),
   prompt: (params: {
     sessionId: string;
@@ -113,6 +118,14 @@ const opencodeAPI = {
     const fn = () => callback();
     ipcRenderer.on(IPC_EVENTS.INIT_DONE, fn);
     return () => ipcRenderer.removeListener(IPC_EVENTS.INIT_DONE, fn);
+  },
+  onDebugLog: (
+    callback: (entry: { level: string; message: string; timestamp: string }) => void
+  ) => {
+    const fn = (_: unknown, entry: { level: string; message: string; timestamp: string }) =>
+      callback(entry);
+    ipcRenderer.on(IPC_EVENTS.DEBUG_LOG, fn);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.DEBUG_LOG, fn);
   },
 };
 

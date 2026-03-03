@@ -11,7 +11,7 @@
       <ElFormItem :label="$t('expert.name')" required>
         <ElInput
           v-model="name"
-          placeholder="如：代码助手、文档专家"
+          :placeholder="$t('expert.addModal.namePlaceholder')"
           maxlength="32"
           show-word-limit
         />
@@ -21,7 +21,7 @@
           v-model="mcpIds"
           multiple
           collapse-tags
-          placeholder="选择要启用的 MCP（可选）"
+          :placeholder="$t('expert.addModal.mcpPlaceholder')"
           class="w-full"
         >
           <ElOption v-for="m in mcpList" :key="m.name" :label="m.name" :value="m.name" />
@@ -32,7 +32,7 @@
           v-model="prompt"
           type="textarea"
           :rows="6"
-          placeholder="设置系统提示词，定义专家角色与行为..."
+          :placeholder="$t('expert.addModal.promptPlaceholder')"
         />
       </ElFormItem>
       <ElAlert v-if="error" :title="error" type="error" show-icon />
@@ -50,8 +50,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useExpertStore } from '@renderer/stores/expert';
 
+const { t } = useI18n();
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>();
 
@@ -90,7 +92,7 @@ async function handleSave() {
   error.value = '';
   const trimmedName = name.value.trim();
   if (!trimmedName) {
-    error.value = '请输入专家名称';
+    error.value = t('expert.addModal.nameRequired');
     return;
   }
   submitting.value = true;

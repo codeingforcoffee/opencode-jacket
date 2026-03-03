@@ -12,7 +12,7 @@
 
       <div class="flex justify-between items-center">
         <span class="text-sm text-gray-600 dark:text-gray-400">
-          {{ expertStore.experts.length }} 个专家
+          {{ $t('expert.count', { n: expertStore.experts.length }) }}
         </span>
         <ElButton type="primary" size="small" @click="showAddModal = true">
           <ElIcon class="mr-1"><Plus /></ElIcon>

@@ -28,6 +28,13 @@ interface OpenCodeAPI {
     data?: unknown;
     error?: string;
   }>;
+  mcpToggle: (name: string, enabled: boolean) => Promise<{ success?: boolean; error?: string }>;
+  mcpStatus: () => Promise<{ data?: Record<string, unknown>; error?: string }>;
+  mcpAuthStart: (
+    name: string
+  ) => Promise<{ data?: { authorizationUrl?: string; viaCli?: boolean }; error?: string }>;
+  mcpReconnect: (name: string) => Promise<{ success?: boolean; error?: string }>;
+  mcpAuthRemove: (name: string) => Promise<{ success?: boolean; error?: string }>;
   mcpRemove: (name: string) => Promise<{ success?: boolean; error?: string }>;
   prompt: (params: {
     sessionId: string;
@@ -100,6 +107,9 @@ interface OpenCodeAPI {
   initGetStatus: () => Promise<{ done: boolean; percent?: number; message?: string }>;
   onInitProgress: (callback: (payload: { percent: number; message: string }) => void) => () => void;
   onInitDone: (callback: () => void) => () => void;
+  onDebugLog: (
+    callback: (entry: { level: string; message: string; timestamp: string }) => void
+  ) => () => void;
 }
 
 declare global {

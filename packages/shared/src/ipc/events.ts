@@ -17,4 +17,6 @@ export const IPC_EVENTS = {
   OPENCODE_PERMISSION: 'RENDERER_OPENCODE_PERMISSION',
   // Question 工具提问（来自 OpenCode 服务端）
   OPENCODE_QUESTION: 'RENDERER_OPENCODE_QUESTION',
+  // 主进程 UI 调试日志
+  DEBUG_LOG: 'RENDERER_DEBUG_LOG',
 } as const;

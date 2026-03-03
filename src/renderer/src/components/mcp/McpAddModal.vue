@@ -46,7 +46,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
+const { t } = useI18n();
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'added'): void }>();
 
@@ -76,19 +78,19 @@ async function handleSubmit() {
   error.value = '';
   const trimmedName = name.value.trim();
   if (!trimmedName) {
-    error.value = 'MCP 名称不能为空';
+    error.value = t('mcp.addModal.nameRequired');
     return;
   }
   if (serverType.value === 'remote') {
     const trimmedUrl = url.value.trim();
     if (!trimmedUrl) {
-      error.value = '请输入 MCP 服务器 URL';
+      error.value = t('mcp.addModal.urlRequired');
       return;
     }
   } else {
     const trimmedCmd = command.value.trim();
     if (!trimmedCmd) {
-      error.value = '请输入启动命令';
+      error.value = t('mcp.addModal.commandRequired');
       return;
     }
   }

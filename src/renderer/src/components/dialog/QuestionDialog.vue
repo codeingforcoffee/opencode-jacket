@@ -48,12 +48,12 @@
         <!-- 自定义输入（custom=true 或未设置时显示） -->
         <div v-if="currentQuestion.custom !== false" class="mb-4">
           <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            或输入自定义回答
+            {{ $t('question.customLabel') }}
           </label>
           <input
             v-model="customText"
             type="text"
-            placeholder="输入你的回答..."
+            :placeholder="$t('question.customPlaceholder')"
             class="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             @keydown.enter="submit"
           />
@@ -61,7 +61,9 @@
 
         <!-- 多问题进度 -->
         <p v-if="request.questions.length > 1" class="mb-3 text-xs text-gray-400">
-          问题 {{ currentIndex + 1 }} / {{ request.questions.length }}
+          {{
+            $t('question.progress', { current: currentIndex + 1, total: request.questions.length })
+          }}
         </p>
 
         <!-- 操作按钮 -->
@@ -70,7 +72,7 @@
             class="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
             @click="reject"
           >
-            跳过
+            {{ $t('question.skip') }}
           </button>
           <div class="flex gap-2">
             <button
@@ -78,14 +80,14 @@
               class="rounded-md border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
               @click="prev"
             >
-              上一题
+              {{ $t('question.prev') }}
             </button>
             <button
               class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               :disabled="!canSubmit"
               @click="submit"
             >
-              {{ isLastQuestion ? '提交' : '下一题' }}
+              {{ isLastQuestion ? $t('question.submit') : $t('question.next') }}
             </button>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
 } from '../opencode-client';
 import { flushChunkBuffer } from '../utils/chunk-buffer';
 import { withTimeout } from '../utils/with-timeout';
+import { UiConsole } from '../utils/debug-console';
 
 type SendToRenderer = (channel: string, ...args: unknown[]) => void;
 
@@ -58,6 +59,7 @@ export function registerConnectionIPC(
     if (!c) return { error: 'Not connected' };
     try {
       const res = await c.config.providers();
+      UiConsole.log('🍕🍕 ~ ipcMain.handle(IPC.CONFIG_PROVIDERS) ~ res:', res);
       return { data: res.data };
     } catch (err) {
       return { error: (err as Error).message };

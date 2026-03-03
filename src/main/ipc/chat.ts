@@ -2,6 +2,22 @@ import { ipcMain } from 'electron';
 import { IPC } from '@shared';
 import { getOpenCodeClient } from '../opencode-client';
 
+async function getMcpSystemPrompt(
+  c: NonNullable<ReturnType<typeof getOpenCodeClient>>
+): Promise<string | undefined> {
+  try {
+    const res = await c.mcp.status();
+    const statusMap = res.data as Record<string, { status?: string }> | undefined;
+    if (!statusMap) return undefined;
+    const hasConnected = Object.values(statusMap).some((s) => s?.status === 'connected');
+    return hasConnected
+      ? '已连接 MCP 工具，当涉及业务操作时请优先调用 MCP 工具而非仅基于代码回答。'
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function registerChatIPC(): void {
   ipcMain.handle(IPC.OPENCODE_SESSION_ABORT, async (_, sessionId: string) => {
     const c = getOpenCodeClient();
@@ -31,10 +47,12 @@ export function registerChatIPC(): void {
           params.model?.providerID && params.model?.modelID
             ? { providerID: params.model.providerID, modelID: params.model.modelID }
             : undefined;
+        const system = await getMcpSystemPrompt(c);
         const res = await c.session.promptAsync({
           sessionID: params.sessionId,
           parts: params.parts.map((p) => ({ type: 'text' as const, text: p.text ?? '' })),
           model,
+          system,
         });
         return { data: res.data };
       } catch (err) {

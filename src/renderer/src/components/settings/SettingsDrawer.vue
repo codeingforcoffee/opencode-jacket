@@ -26,15 +26,14 @@
     </ElForm>
     <ElAlert
       v-if="healthResult"
-      :title="healthResult.healthy ? 'OpenCode 服务正常' : 'OpenCode 服务不可用'"
+      :title="healthResult.healthy ? $t('settings.healthOk') : $t('settings.healthFail')"
       :type="healthResult.healthy ? 'success' : 'error'"
       :description="
         healthResult.healthy
           ? healthResult.version
-            ? `版本: ${healthResult.version}`
+            ? $t('settings.healthVersion', { version: healthResult.version })
             : undefined
-          : healthResult.error ||
-            'OpenCode 连接失败。本应用已内置 OpenCode，首次使用需在终端运行 opencode auth login 配置 LLM'
+          : healthResult.error || $t('settings.healthError')
       "
       show-icon
       class="mt-4"

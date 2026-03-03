@@ -12,7 +12,9 @@
           :style="{ width: `${initPercent}%` }"
         />
       </div>
-      <p class="text-sm text-gray-600 dark:text-gray-400">初始化中：{{ initPercent }}%</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        {{ $t('app.initMessage', { percent: initPercent }) }}
+      </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">{{ initMessage }}</p>
     </div>
 
@@ -26,6 +28,9 @@
           <component :is="Component" />
         </router-view>
       </main>
+
+      <!-- 右侧：开发期调试面板 -->
+      <DebugConsole v-if="isDev" />
     </div>
 
     <!-- 权限请求对话框 -->
@@ -48,15 +53,18 @@ import Sidebar from '@renderer/components/layout/Sidebar.vue';
 import PermissionDialog from '@renderer/components/dialog/PermissionDialog.vue';
 import QuestionDialog from '@renderer/components/dialog/QuestionDialog.vue';
 import type { PermissionRequest, QuestionRequest } from '@renderer/types';
+import DebugConsole from '@renderer/components/debug/DebugConsole.vue';
 
-const { locale } = useI18n();
+const isDev = import.meta.env.DEV;
+
+const { locale, t } = useI18n();
 const connectionStore = useConnectionStore();
 const sessionStore = useSessionStore();
 const themeStore = useThemeStore();
 
 const initDone = ref(false);
 const initPercent = ref(0);
-const initMessage = ref('检查中...');
+const initMessage = ref('');
 const pendingPermission = ref<PermissionRequest | null>(null);
 const pendingQuestion = ref<QuestionRequest | null>(null);
 
@@ -66,6 +74,7 @@ let unsubInitDone: (() => void) | null = null;
 let unsubPermission: (() => void) | null = null;
 let unsubQuestion: (() => void) | null = null;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onPermissionReplied(_requestID: string, _reply: 'once' | 'always' | 'reject'): void {
   pendingPermission.value = null;
 }
@@ -79,7 +88,7 @@ onMounted(() => {
         return;
       }
       initPercent.value = s.percent ?? 0;
-      initMessage.value = s.message ?? '初始化中...';
+      initMessage.value = s.message ?? t('app.initChecking');
     });
     unsubInitProgress = window.opencode.onInitProgress((p) => {
       initPercent.value = p.percent;
