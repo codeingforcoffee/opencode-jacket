@@ -90,6 +90,13 @@ const messages = {
       prompt: '系统提示词',
       mcpSelect: '选择 MCP',
       remove: '移除',
+      edit: '编辑',
+      enter: '进入会话',
+      exitExpertMode: '退出专家模式',
+      activeExpert: '专家模式：{name}',
+      editModal: {
+        title: '编辑专家',
+      },
       addModal: {
         title: '添加专家',
         cancel: '取消',
@@ -237,6 +244,13 @@ const messages = {
       prompt: 'System Prompt',
       mcpSelect: 'Select MCP',
       remove: 'Remove',
+      edit: 'Edit',
+      enter: 'Enter Session',
+      exitExpertMode: 'Exit Expert Mode',
+      activeExpert: 'Expert Mode: {name}',
+      editModal: {
+        title: 'Edit Expert',
+      },
       addModal: {
         title: 'Add Expert',
         cancel: 'Cancel',

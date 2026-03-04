@@ -21,6 +21,69 @@
     </div>
 
     <template v-else>
+      <!-- 专家模式标识栏 -->
+      <div
+        v-if="expertStore.currentExpert"
+        class="shrink-0 border-b border-primary-200 dark:border-primary-800/50"
+      >
+        <ElPopover placement="bottom-start" :width="340" trigger="hover" :show-after="200">
+          <template #reference>
+            <div
+              class="flex items-center justify-between px-4 py-2 bg-primary-50 dark:bg-primary-900/20 cursor-default select-none"
+            >
+              <div
+                class="flex items-center gap-2 text-sm text-primary-700 dark:text-primary-300 min-w-0"
+              >
+                <ElIcon :size="14" class="shrink-0"><MagicStick /></ElIcon>
+                <span class="font-medium shrink-0">{{ expertStore.currentExpert.name }}</span>
+                <span
+                  v-if="expertStore.currentExpert.prompt"
+                  class="text-xs text-primary-500 dark:text-primary-400 truncate"
+                >
+                  — {{ expertStore.currentExpert.prompt.slice(0, 50)
+                  }}{{ expertStore.currentExpert.prompt.length > 50 ? '…' : '' }}
+                </span>
+              </div>
+              <ElIcon :size="12" class="shrink-0 ml-2 text-primary-400"><ArrowDown /></ElIcon>
+            </div>
+          </template>
+
+          <!-- 气泡详情 -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <ElIcon :size="15" class="text-primary-500"><MagicStick /></ElIcon>
+              <span class="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                {{ expertStore.currentExpert.name }}
+              </span>
+            </div>
+            <div v-if="expertStore.currentExpert.prompt">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                {{ $t('expert.prompt') }}
+              </div>
+              <div
+                class="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed"
+              >
+                {{ expertStore.currentExpert.prompt }}
+              </div>
+            </div>
+            <div v-if="expertStore.currentExpert.mcpIds?.length">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                {{ $t('expert.mcpSelect') }}
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <ElTag
+                  v-for="m in expertStore.currentExpert.mcpIds"
+                  :key="m"
+                  size="small"
+                  type="primary"
+                  >{{ m }}</ElTag
+                >
+              </div>
+            </div>
+          </div>
+        </ElPopover>
+      </div>
+
       <!-- 消息区域 -->
       <div class="flex-1 overflow-y-auto px-6 py-8">
         <div class="max-w-3xl mx-auto space-y-6">
@@ -262,7 +325,7 @@
                     <ElIcon :size="15"><DocumentAdd /></ElIcon>
                   </button>
                 </ElTooltip>
-                <McpPopover />
+                <McpPopover v-if="!expertStore.currentExpert" />
                 <div class="w-px h-4 bg-gray-200 dark:bg-gray-700/60 mx-0.5" />
                 <ModelPicker
                   ref="modelPickerRef"
@@ -328,6 +391,7 @@ import {
 } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
+import { useExpertStore } from '@renderer/stores/expert';
 import McpPopover from './McpPopover.vue';
 import ModelPicker from './ModelPicker.vue';
 import { useI18n } from 'vue-i18n';
@@ -336,6 +400,7 @@ import { ElMessage } from 'element-plus';
 const { t } = useI18n();
 const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
+const expertStore = useExpertStore();
 const modelPickerRef = ref<InstanceType<typeof ModelPicker> | null>(null);
 const currentModel = ref<{ providerID: string; modelID: string } | undefined>(undefined);
 
@@ -565,7 +630,15 @@ async function sendMessage() {
     const model = rawModel
       ? { providerID: rawModel.providerID, modelID: rawModel.modelID }
       : undefined;
-    const res = await window.opencode.prompt({ sessionId, parts, model });
+    const expert = expertStore.currentExpert;
+    let system: string | undefined;
+    if (expert) {
+      system = expert.prompt || '';
+      if (expert.mcpIds.length) {
+        system += `\n\n当前可用MCP工具：${expert.mcpIds.join('、')}`;
+      }
+    }
+    const res = await window.opencode.prompt({ sessionId, parts, model, system });
     if (res.error) {
       messages.value.push({
         role: 'assistant',

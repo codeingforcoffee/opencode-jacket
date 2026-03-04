@@ -1,7 +1,7 @@
 <template>
   <ElDialog
     :model-value="modelValue"
-    :title="$t('expert.addModal.title')"
+    :title="editingExpert ? $t('expert.editModal.title') : $t('expert.addModal.title')"
     width="520px"
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
@@ -51,10 +51,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useExpertStore } from '@renderer/stores/expert';
+import { useExpertStore, type ExpertConfig } from '@renderer/stores/expert';
 
 const { t } = useI18n();
-const props = defineProps<{ modelValue: boolean }>();
+const props = defineProps<{ modelValue: boolean; editingExpert?: ExpertConfig }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>();
 
 const expertStore = useExpertStore();
@@ -79,6 +79,13 @@ watch(
       reset();
       return;
     }
+    if (props.editingExpert) {
+      name.value = props.editingExpert.name;
+      mcpIds.value = [...props.editingExpert.mcpIds];
+      prompt.value = props.editingExpert.prompt;
+    } else {
+      reset();
+    }
     if (typeof window.opencode !== 'undefined') {
       const res = await window.opencode.mcpList();
       if (res.data && Array.isArray(res.data)) {
@@ -97,11 +104,19 @@ async function handleSave() {
   }
   submitting.value = true;
   try {
-    expertStore.addExpert({
-      name: trimmedName,
-      prompt: prompt.value.trim(),
-      mcpIds: [...mcpIds.value],
-    });
+    if (props.editingExpert) {
+      expertStore.updateExpert(props.editingExpert.id, {
+        name: trimmedName,
+        prompt: prompt.value.trim(),
+        mcpIds: [...mcpIds.value],
+      });
+    } else {
+      expertStore.addExpert({
+        name: trimmedName,
+        prompt: prompt.value.trim(),
+        mcpIds: [...mcpIds.value],
+      });
+    }
     emit('saved');
     emit('update:modelValue', false);
   } finally {

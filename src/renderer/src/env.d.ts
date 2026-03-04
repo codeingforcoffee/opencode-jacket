@@ -40,6 +40,7 @@ interface OpenCodeAPI {
     sessionId: string;
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
+    system?: string;
   }) => Promise<{ data?: unknown; error?: string }>;
   sessionAbort: (sessionId: string) => Promise<{ success?: boolean; error?: string }>;
   fileRead: (params: { path: string; directory?: string }) => Promise<{

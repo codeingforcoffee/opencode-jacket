@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="flex h-full w-72 shrink-0 flex-col border-l border-gray-700/60 bg-gray-900/95 font-mono"
+    class="flex h-full w-120 shrink-0 flex-col border-l border-gray-700/60 bg-gray-900/95 font-mono"
     style="font-size: 11px; line-height: 1.5"
   >
     <!-- 标题栏 -->

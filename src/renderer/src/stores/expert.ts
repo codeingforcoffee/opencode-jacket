@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 export interface ExpertConfig {
   id: string;
   name: string;
   prompt: string;
   mcpIds: string[];
+  sessionId?: string;
 }
 
 const STORAGE_KEY = 'opencode-jacket-experts';
@@ -27,6 +28,11 @@ function saveToStorage(list: ExpertConfig[]) {
 
 export const useExpertStore = defineStore('expert', () => {
   const experts = ref<ExpertConfig[]>(loadFromStorage());
+  const currentExpertId = ref<string>('');
+
+  const currentExpert = computed(() =>
+    currentExpertId.value ? experts.value.find((e) => e.id === currentExpertId.value) : undefined
+  );
 
   function addExpert(config: Omit<ExpertConfig, 'id'>) {
     const id = `expert-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -45,14 +51,37 @@ export const useExpertStore = defineStore('expert', () => {
   }
 
   function removeExpert(id: string) {
+    if (currentExpertId.value === id) currentExpertId.value = '';
     experts.value = experts.value.filter((e) => e.id !== id);
     saveToStorage(experts.value);
   }
 
+  function setExpertSession(expertId: string, sessionId: string) {
+    updateExpert(expertId, { sessionId });
+  }
+
+  function setCurrentExpert(id: string) {
+    currentExpertId.value = id;
+  }
+
+  function clearCurrentExpert() {
+    currentExpertId.value = '';
+  }
+
+  function getExpertBySessionId(sessionId: string): ExpertConfig | undefined {
+    return experts.value.find((e) => e.sessionId === sessionId);
+  }
+
   return {
     experts,
+    currentExpertId,
+    currentExpert,
     addExpert,
     updateExpert,
     removeExpert,
+    setExpertSession,
+    setCurrentExpert,
+    clearCurrentExpert,
+    getExpertBySessionId,
   };
 });

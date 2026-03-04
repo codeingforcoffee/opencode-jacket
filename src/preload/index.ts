@@ -29,6 +29,7 @@ const opencodeAPI = {
     sessionId: string;
     parts: Array<{ type: string; text?: string }>;
     model?: { providerID?: string; modelID?: string };
+    system?: string;
   }) => ipcRenderer.invoke(IPC.OPENCODE_PROMPT, params),
   sessionAbort: (sessionId: string) => ipcRenderer.invoke(IPC.OPENCODE_SESSION_ABORT, sessionId),
   fileRead: (params: { path: string; directory?: string }) =>

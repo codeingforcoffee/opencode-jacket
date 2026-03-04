@@ -24,6 +24,13 @@
           "
           @click="handleSelectSession(s.id)"
         >
+          <ElIcon
+            v-if="expertStore.getExpertBySessionId(s.id)"
+            :size="12"
+            class="shrink-0 text-primary-500 dark:text-primary-400 mr-1"
+          >
+            <MagicStick />
+          </ElIcon>
           <span class="truncate flex-1">{{ s.title || s.id.slice(0, 8) }}</span>
           <div
             v-if="sessionStore.currentSessionId === s.id"
@@ -127,10 +134,12 @@ import { useRouter } from 'vue-router';
 import { Edit, Delete, Connection, MagicStick, Setting } from '@element-plus/icons-vue';
 import { useSessionStore } from '@renderer/stores/session';
 import { useConnectionStore } from '@renderer/stores/connection';
+import { useExpertStore } from '@renderer/stores/expert';
 
 const router = useRouter();
 const sessionStore = useSessionStore();
 const connectionStore = useConnectionStore();
+const expertStore = useExpertStore();
 
 /** 左下角导航：MCP、专家探索、设置（仿 ECOwork 样式） */
 const bottomNavItems: { path: string; labelKey: string; icon: object }[] = [
@@ -151,12 +160,19 @@ const deleteLoading = ref(false);
 async function handleNewSession() {
   const session = await sessionStore.createSession();
   if (session) {
+    expertStore.clearCurrentExpert();
     router.push('/chat');
   }
 }
 
 function handleSelectSession(id: string) {
   sessionStore.setCurrentSession(id);
+  const expert = expertStore.getExpertBySessionId(id);
+  if (expert) {
+    expertStore.setCurrentExpert(expert.id);
+  } else {
+    expertStore.clearCurrentExpert();
+  }
   router.push('/chat');
 }
 

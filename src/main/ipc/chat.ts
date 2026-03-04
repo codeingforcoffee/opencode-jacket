@@ -38,6 +38,7 @@ export function registerChatIPC(): void {
         sessionId: string;
         parts: Array<{ type: string; text?: string }>;
         model?: { providerID?: string; modelID?: string };
+        system?: string;
       }
     ) => {
       const c = getOpenCodeClient();
@@ -47,7 +48,7 @@ export function registerChatIPC(): void {
           params.model?.providerID && params.model?.modelID
             ? { providerID: params.model.providerID, modelID: params.model.modelID }
             : undefined;
-        const system = await getMcpSystemPrompt(c);
+        const system = params.system !== undefined ? params.system : await getMcpSystemPrompt(c);
         const res = await c.session.promptAsync({
           sessionID: params.sessionId,
           parts: params.parts.map((p) => ({ type: 'text' as const, text: p.text ?? '' })),
